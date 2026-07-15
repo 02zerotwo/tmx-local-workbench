@@ -59,6 +59,7 @@ describe("ProjectLibrary", () => {
     render(<ProjectLibrary api={api} onOpenProject={onOpenProject} />);
 
     expect(await screen.findByText("Service Manual")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "项目" })).toBeInTheDocument();
     expect(screen.getAllByText("1,245")).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "打开 Service Manual" }));
     expect(onOpenProject).toHaveBeenCalledWith(PROJECT);

@@ -393,23 +393,59 @@ describe("TranslationEditor navigation and saving", () => {
 });
 
 describe("TranslationEditor find and replace", () => {
-  it("finds exact case-sensitive matches and selects previous or next occurrences", () => {
+  it("keeps find text as a draft until Enter submits it", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "展开查找替换" }));
     const query = screen.getByRole("textbox", { name: "查找内容" });
     const editor = screen.getByRole("textbox", { name: "目标文本" }) as HTMLTextAreaElement;
+    editor.focus();
+    editor.setSelectionRange(6, 6);
 
     expect(screen.getByRole("button", { name: "替换当前" })).toBeDisabled();
+    query.focus();
     fireEvent.change(query, { target: { value: "Alarm" } });
-    expect(screen.getByText("1 / 2" )).toBeVisible();
+    expect(screen.getByText("0 / 0")).toBeVisible();
+    expect(query).toHaveFocus();
+    expect(editor.selectionStart).toBe(6);
+
+    fireEvent.keyDown(query, { key: "Enter" });
+    expect(screen.getByText("1 / 3" )).toBeVisible();
     expect(editor.selectionStart).toBe(0);
     expect(editor.selectionEnd).toBe(5);
 
     fireEvent.click(screen.getByRole("button", { name: "下一个匹配" }));
-    expect(screen.getByText("2 / 2")).toBeVisible();
-    expect(editor.selectionStart).toBe(12);
+    expect(screen.getByText("2 / 3")).toBeVisible();
+    expect(editor.selectionStart).toBe(6);
     fireEvent.click(screen.getByRole("button", { name: "上一个匹配" }));
     expect(editor.selectionStart).toBe(0);
+  });
+
+  it("submits from the find button and highlights every match", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "展开查找替换" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "查找内容" }), {
+      target: { value: "alarm" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "执行查找" }));
+
+    expect(screen.getAllByTestId("find-highlight")).toHaveLength(3);
+    expect(screen.getByTestId("find-highlight-active")).toHaveTextContent("Alarm");
+  });
+
+  it("toggles case-sensitive matching for the committed query", () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: "展开查找替换" }));
+    const query = screen.getByRole("textbox", { name: "查找内容" });
+    fireEvent.change(query, { target: { value: "Alarm" } });
+    fireEvent.keyDown(query, { key: "Enter" });
+    expect(screen.getByText("1 / 3")).toBeVisible();
+
+    const matchCase = screen.getByRole("button", { name: "区分大小写" });
+    fireEvent.click(matchCase);
+
+    expect(matchCase).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("1 / 2")).toBeVisible();
   });
 
   it("replaces the current match or all exact matches in the current draft", () => {
@@ -418,6 +454,8 @@ describe("TranslationEditor find and replace", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "查找内容" }), {
       target: { value: "Alarm" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "区分大小写" }));
+    fireEvent.click(screen.getByRole("button", { name: "执行查找" }));
     fireEvent.change(screen.getByRole("textbox", { name: "替换为" }), {
       target: { value: "Warning" },
     });
@@ -439,6 +477,8 @@ describe("TranslationEditor find and replace", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "查找内容" }), {
       target: { value: "Alarm" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "区分大小写" }));
+    fireEvent.click(screen.getByRole("button", { name: "执行查找" }));
     fireEvent.change(screen.getByRole("textbox", { name: "替换为" }), {
       target: { value: "Alarm!" },
     });
@@ -460,6 +500,7 @@ describe("TranslationEditor find and replace", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "查找内容" }), {
       target: { value: "中文\n第二行" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "执行查找" }));
     fireEvent.change(screen.getByRole("textbox", { name: "替换为" }), {
       target: { value: "内容换行" },
     });
@@ -474,6 +515,59 @@ describe("TranslationEditor find and replace", () => {
       sourceText: ROW.sourceText,
       targetText: "第一行内容换行中文\n第一行内容换行中文",
     }));
+  });
+
+  it("capitalizes the first English letter only inside the selected target range", () => {
+    setup();
+    const editor = screen.getByRole("textbox", { name: "目标文本" }) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "prefix \"alarm remains lower" } });
+    editor.focus();
+    editor.setSelectionRange(7, 13);
+    fireEvent.select(editor);
+
+    const capitalize = screen.getByRole("button", { name: "选中区域首字母大写" });
+    fireEvent.click(capitalize);
+
+    expect(editor).toHaveValue("prefix \"Alarm remains lower");
+    expect(editor.selectionStart).toBe(7);
+    expect(editor.selectionEnd).toBe(13);
+  });
+
+  it("does not capitalize target text when there is no selection", () => {
+    setup();
+    const editor = screen.getByRole("textbox", { name: "目标文本" }) as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "alarm remains lower" } });
+    editor.setSelectionRange(0, 0);
+
+    fireEvent.click(screen.getByRole("button", { name: "选中区域首字母大写" }));
+
+    expect(editor).toHaveValue("alarm remains lower");
+  });
+
+  it("provides hover hints for target editing and find actions", () => {
+    setup();
+    const toolbarActions = [
+      "复制目标文本",
+      "选中区域首字母大写",
+      "恢复原文",
+      "展开查找替换",
+    ];
+    for (const name of toolbarActions) {
+      expect(screen.getByRole("button", { name })).toHaveAttribute("title");
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "展开查找替换" }));
+    const findActions = [
+      "区分大小写",
+      "执行查找",
+      "上一个匹配",
+      "下一个匹配",
+      "替换当前",
+      "全部替换",
+    ];
+    for (const name of findActions) {
+      expect(screen.getByRole("button", { name })).toHaveAttribute("title");
+    }
   });
 });
 

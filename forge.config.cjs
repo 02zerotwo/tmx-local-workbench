@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+const { copyFileSync, readFileSync } = require("node:fs");
+const { join } = require("node:path");
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
@@ -10,8 +12,44 @@ function rootPath(name) {
   return new RegExp(`^[\\\\/]${escapeRegExp(name)}(?:[\\\\/]|$)`);
 }
 
+function copyWindowsSqliteNativeModule(packageResult) {
+  if (packageResult.platform !== "win32") return;
+
+  const source = join(
+    __dirname,
+    "node_modules",
+    "better-sqlite3",
+    "build",
+    "Release",
+    "better_sqlite3.node",
+  );
+  if (readFileSync(source).subarray(0, 2).toString("ascii") !== "MZ") {
+    throw new Error(
+      "Windows better-sqlite3 module is missing. Run pnpm native:electron:win before packaging.",
+    );
+  }
+
+  for (const outputPath of packageResult.outputPaths) {
+    copyFileSync(source, join(
+      outputPath,
+      "resources",
+      "app.asar.unpacked",
+      "node_modules",
+      "better-sqlite3",
+      "build",
+      "Release",
+      "better_sqlite3.node",
+    ));
+  }
+}
+
 module.exports = {
   outDir: "release",
+  hooks: {
+    postPackage: async (_forgeConfig, packageResult) => {
+      copyWindowsSqliteNativeModule(packageResult);
+    },
+  },
   packagerConfig: {
     asar: {
       unpack: "**/*.node",
@@ -24,6 +62,7 @@ module.exports = {
       rootPath("coverage"),
       rootPath("desktop"),
       rootPath("docs"),
+      rootPath("release"),
       rootPath("src"),
       rootPath("eslint.config.mjs"),
       rootPath("next.config.ts"),

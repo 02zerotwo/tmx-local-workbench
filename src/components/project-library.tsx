@@ -16,6 +16,26 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type {
   ImportProgress,
   ProjectSummary,
@@ -267,37 +287,41 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
           </div>
         </div>
 
-        <button
+        <Button
           aria-label="打开数据目录"
-          className="inline-flex size-10 cursor-pointer items-center justify-center rounded border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="size-10 text-slate-700"
           onClick={() => void api.openDataDirectory().catch((openError: unknown) => (
             setError(errorMessage(openError))
           ))}
+          size="icon"
           title="打开数据目录"
           type="button"
+          variant="outline"
         >
           <FolderOpen size={17} />
-        </button>
-        <button
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+        </Button>
+        <Button
+          className="h-10 text-slate-700"
           disabled={busyAction !== null}
           onClick={() => void runDatabaseAction("backup")}
           type="button"
+          variant="outline"
         >
           <DatabaseBackup size={16} />
           备份
-        </button>
-        <button
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+        </Button>
+        <Button
+          className="h-10 text-slate-700"
           disabled={busyAction !== null}
           onClick={() => void runDatabaseAction("restore")}
           type="button"
+          variant="outline"
         >
           <RotateCcw size={16} />
           恢复
-        </button>
-        <button
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded bg-blue-700 px-4 text-sm font-medium text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+        </Button>
+        <Button
+          className="h-10 px-4"
           disabled={busyAction !== null}
           onClick={() => void importProject()}
           type="button"
@@ -306,31 +330,30 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
             ? <Loader2 className="animate-spin" size={17} />
             : <FileUp size={17} />}
           导入 TMX
-        </button>
+        </Button>
       </header>
 
-      <div className="h-1 shrink-0 bg-slate-200" aria-hidden={!progress}>
-        {progress ? (
-          <div
-            className={progress.stage === "error"
-              ? "h-full bg-red-600 transition-[width] duration-200"
-              : "h-full bg-blue-600 transition-[width] duration-200"}
-            style={{ width: `${progress.percent}%` }}
-          />
-        ) : null}
-      </div>
+      <Progress
+        aria-hidden={!progress}
+        className={progress?.stage === "error"
+          ? "h-1 shrink-0 rounded-none bg-slate-200 [&_[data-slot=progress-indicator]]:bg-red-600"
+          : "h-1 shrink-0 rounded-none bg-slate-200"}
+        value={progress?.percent ?? 0}
+      />
 
       {error ? (
         <div className="flex min-h-10 items-center justify-between border-b border-red-200 bg-red-50 px-5 py-2 text-sm text-red-800" role="alert">
           <span className="truncate">{error}</span>
-          <button
+          <Button
             aria-label="关闭错误提示"
-            className="cursor-pointer font-medium hover:text-red-950 focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="h-7 px-2 font-medium text-red-800 hover:bg-red-100 hover:text-red-950"
             onClick={() => setError("")}
+            size="sm"
             type="button"
+            variant="ghost"
           >
             关闭
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -347,16 +370,18 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
             <h2 className="text-sm font-semibold text-slate-900">全部项目</h2>
             <p className="text-xs text-slate-500">每个导入文件对应一个独立项目</p>
           </div>
-          <button
+          <Button
             aria-label="刷新项目列表"
-            className="inline-flex size-9 cursor-pointer items-center justify-center rounded text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="size-9 text-slate-600"
             disabled={loading}
             onClick={() => void refreshProjects()}
+            size="icon"
             title="刷新"
             type="button"
+            variant="ghost"
           >
             <RefreshCw className={loading ? "animate-spin" : ""} size={16} />
-          </button>
+          </Button>
         </div>
 
         {loading ? (
@@ -369,67 +394,72 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
             <FileArchive className="text-slate-400" size={34} />
             <h2 className="mt-4 text-base font-semibold text-slate-900">还没有项目</h2>
             <p className="mt-1 text-sm text-slate-500">导入第一个 TMX 文件后即可开始筛选和编辑。</p>
-            <button
-              className="mt-5 inline-flex h-10 cursor-pointer items-center gap-2 rounded bg-blue-700 px-4 text-sm font-medium text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <Button
+              className="mt-5 h-10 px-4"
               onClick={() => void importProject()}
               type="button"
             >
               <FileUp size={17} />
               导入 TMX
-            </button>
+            </Button>
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-            <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-sm">
-              <thead className="sticky top-0 z-10 bg-slate-100 text-xs font-medium text-slate-600">
-                <tr className="h-10 border-b border-slate-200">
-                  <SortableHeader active={sortKey === "name"} direction={sortDirection} label="项目名称" onClick={() => chooseSort("name")} width="w-[22%]" />
-                  <th className="w-[18%] px-3 font-medium">源文件</th>
-                  <th className="w-[17%] px-3 font-medium">语言</th>
-                  <SortableHeader active={sortKey === "totalUnits"} direction={sortDirection} label="翻译行" onClick={() => chooseSort("totalUnits")} width="w-[9%]" />
-                  <th className="w-[8%] px-3 text-right font-medium">已修改</th>
-                  <th className="w-[8%] px-3 text-right font-medium">空译文</th>
-                  <SortableHeader active={sortKey === "updatedAt"} direction={sortDirection} label="最近更新" onClick={() => chooseSort("updatedAt")} width="w-[11%]" />
-                  <th className="w-[7%] px-3 text-right font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedProjects.map((project) => (
-                  <tr
-                    className="h-[68px] border-b border-slate-200 bg-white transition hover:bg-blue-50/40"
-                    key={project.id}
-                  >
-                    <td className="px-3">
-                      <button
-                        className="block max-w-full cursor-pointer truncate text-left font-medium text-slate-950 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:text-slate-500"
+          <Table
+            aria-label="项目"
+            className="min-w-[1040px] table-fixed border-collapse text-left text-sm"
+            containerClassName="min-h-0 flex-1 overflow-auto scrollbar-thin"
+          >
+            <TableHeader className="sticky top-0 z-10 bg-slate-100 text-xs font-medium text-slate-600">
+              <TableRow className="h-10 border-slate-200 hover:bg-slate-100">
+                <SortableHeader active={sortKey === "name"} direction={sortDirection} label="项目名称" onClick={() => chooseSort("name")} width="w-[22%]" />
+                <TableHead className="w-[18%] px-3 font-medium text-slate-600">源文件</TableHead>
+                <TableHead className="w-[17%] px-3 font-medium text-slate-600">语言</TableHead>
+                <SortableHeader active={sortKey === "totalUnits"} direction={sortDirection} label="翻译行" onClick={() => chooseSort("totalUnits")} width="w-[9%]" />
+                <TableHead className="w-[8%] px-3 text-right font-medium text-slate-600">已修改</TableHead>
+                <TableHead className="w-[8%] px-3 text-right font-medium text-slate-600">空译文</TableHead>
+                <SortableHeader active={sortKey === "updatedAt"} direction={sortDirection} label="最近更新" onClick={() => chooseSort("updatedAt")} width="w-[11%]" />
+                <TableHead className="w-[7%] px-3 text-right font-medium text-slate-600">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedProjects.map((project) => (
+                <TableRow
+                  className="h-[68px] border-b border-slate-200 bg-white transition hover:bg-blue-50/40"
+                  key={project.id}
+                >
+                  <TableCell className="px-3">
+                      <Button
+                        className="block h-auto max-w-full truncate p-0 text-left font-medium text-slate-950 hover:text-blue-700 disabled:text-slate-500"
                         disabled={project.importStatus !== "ready"}
                         onClick={() => onOpenProject(project)}
                         type="button"
+                        variant="link"
                       >
                         {project.name}
-                      </button>
-                      <span className={project.importStatus === "ready"
-                        ? "mt-1 inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700"
+                      </Button>
+                      <Badge className={project.importStatus === "ready"
+                        ? "mt-1 bg-emerald-50 text-[11px] text-emerald-700"
                         : project.importStatus === "failed"
-                          ? "mt-1 inline-block rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-700"
-                          : "mt-1 inline-block rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700"}
+                          ? "mt-1 bg-red-50 text-[11px] text-red-700"
+                          : "mt-1 bg-blue-50 text-[11px] text-blue-700"}
+                        variant="secondary"
                       >
                         {statusLabel(project.importStatus)}
-                      </span>
-                    </td>
-                    <td className="truncate px-3 text-slate-600" title={project.fileName}>{project.fileName}</td>
-                    <td className="px-3 text-slate-600">
+                      </Badge>
+                  </TableCell>
+                  <TableCell className="truncate px-3 text-slate-600" title={project.fileName}>{project.fileName}</TableCell>
+                  <TableCell className="px-3 text-slate-600">
                       <span>{project.sourceLanguage || "未声明"}</span>
                       <ArrowRight className="mx-1 inline text-slate-400" size={13} />
                       <span className="truncate" title={project.targetLanguages.join(", ")}>
                         {project.targetLanguages.join(", ") || "未识别"}
                       </span>
-                    </td>
-                    <td className="px-3 text-right tabular-nums text-slate-800">{project.totalUnits.toLocaleString()}</td>
-                    <td className="px-3 text-right tabular-nums text-amber-700">{project.changedUnits.toLocaleString()}</td>
-                    <td className="px-3 text-right tabular-nums text-red-700">{project.emptyUnits.toLocaleString()}</td>
-                    <td className="px-3 text-xs leading-5 text-slate-600">{formatDate(project.updatedAt)}</td>
-                    <td className="px-3">
+                  </TableCell>
+                  <TableCell className="px-3 text-right tabular-nums text-slate-800">{project.totalUnits.toLocaleString()}</TableCell>
+                  <TableCell className="px-3 text-right tabular-nums text-amber-700">{project.changedUnits.toLocaleString()}</TableCell>
+                  <TableCell className="px-3 text-right tabular-nums text-red-700">{project.emptyUnits.toLocaleString()}</TableCell>
+                  <TableCell className="px-3 text-xs leading-5 text-slate-600">{formatDate(project.updatedAt)}</TableCell>
+                  <TableCell className="px-3">
                       <div className="flex justify-end gap-1">
                         <IconButton
                           label={`打开 ${project.name}`}
@@ -455,57 +485,63 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
                           <Trash2 size={15} />
                         </IconButton>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
 
-      {renameProject ? (
-        <div aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4" role="dialog">
+      <Dialog
+        onOpenChange={(open) => {
+          if (!open && busyAction !== "rename") {
+            setRenameProject(null);
+          }
+        }}
+        open={Boolean(renameProject)}
+      >
+        <DialogContent className="max-w-md gap-0 overflow-hidden rounded-md bg-white p-0" showCloseButton={busyAction !== "rename"}>
           <form
-            className="w-full max-w-md rounded-md border border-slate-200 bg-white shadow-2xl"
             onSubmit={(event) => {
               event.preventDefault();
               void saveRename();
             }}
           >
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h2 className="text-base font-semibold text-slate-950">重命名项目</h2>
-              <p className="mt-1 text-sm text-slate-500">源文件名称不会改变。</p>
-            </div>
+            <DialogHeader className="border-b border-slate-200 px-5 py-4">
+              <DialogTitle className="text-base font-semibold text-slate-950">重命名项目</DialogTitle>
+              <DialogDescription className="text-sm text-slate-500">源文件名称不会改变。</DialogDescription>
+            </DialogHeader>
             <div className="px-5 py-4">
               <label className="block text-sm font-medium text-slate-700" htmlFor="project-name">项目名称</label>
-              <input
+              <Input
                 autoFocus
-                className="mt-2 h-10 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                className="mt-2 h-10"
                 id="project-name"
                 onChange={(event) => setRenameValue(event.target.value)}
                 value={renameValue}
               />
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
-              <button
-                className="h-10 cursor-pointer rounded border border-slate-300 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <DialogFooter className="m-0 flex-row justify-end rounded-none bg-white px-5 py-4">
+              <Button
+                className="h-10 px-4"
                 onClick={() => setRenameProject(null)}
                 type="button"
+                variant="outline"
               >
                 取消
-              </button>
-              <button
-                className="h-10 cursor-pointer rounded bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              </Button>
+              <Button
+                className="h-10 px-4"
                 disabled={!renameValue.trim() || busyAction === "rename"}
                 type="submit"
               >
                 {busyAction === "rename" ? "保存中..." : "保存名称"}
-              </button>
-            </div>
+              </Button>
+            </DialogFooter>
           </form>
-        </div>
-      ) : null}
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         busy={busyAction === "delete"}
@@ -560,18 +596,19 @@ function SortableHeader({
   width: string;
 }) {
   return (
-    <th className={`${width} px-3 font-medium`}>
-      <button
-        className="inline-flex cursor-pointer items-center gap-1 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <TableHead className={`${width} px-3 font-medium`}>
+      <Button
+        className="h-auto p-0 text-slate-600 hover:bg-transparent hover:text-slate-950"
         onClick={onClick}
         type="button"
+        variant="ghost"
       >
         {label}
         {active
           ? direction === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />
           : null}
-      </button>
-    </th>
+      </Button>
+    </TableHead>
   );
 }
 
@@ -589,17 +626,19 @@ function IconButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
       aria-label={label}
       className={danger
-        ? "inline-flex size-9 cursor-pointer items-center justify-center rounded text-slate-500 transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:opacity-40"
-        : "inline-flex size-9 cursor-pointer items-center justify-center rounded text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"}
+        ? "size-9 text-slate-500 hover:bg-red-50 hover:text-red-700"
+        : "size-9 text-slate-500 hover:bg-slate-100 hover:text-slate-950"}
       disabled={disabled}
       onClick={onClick}
+      size="icon"
       title={label}
       type="button"
+      variant="ghost"
     >
       {children}
-    </button>
+    </Button>
   );
 }

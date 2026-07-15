@@ -24,6 +24,24 @@ const METHOD_NAMES = [
   "backupDatabase",
   "restoreDatabase",
   "openDataDirectory",
+  "getAiSettings",
+  "saveDeepSeekKey",
+  "verifyDeepSeekConnection",
+  "deleteDeepSeekKey",
+  "listAiSessions",
+  "createAiSession",
+  "listAiMessages",
+  "sendAiMessage",
+  "stopAiMessage",
+  "retryAiMessage",
+  "listAiAuditJobs",
+  "startAiAudit",
+  "pauseAiAudit",
+  "resumeAiAudit",
+  "listAiAuditFindings",
+  "decideAiAuditFinding",
+  "acceptAllAiAuditFindings",
+  "applyAiAudit",
   "confirmAppClose",
 ] as const satisfies ReadonlyArray<keyof TmxDesktopApi>;
 
@@ -72,6 +90,28 @@ describe("desktop IPC contract", () => {
     await api.backupDatabase();
     await api.restoreDatabase();
     await api.openDataDirectory();
+    await api.getAiSettings();
+    await api.saveDeepSeekKey("sk-secret");
+    await api.verifyDeepSeekConnection();
+    await api.deleteDeepSeekKey();
+    await api.listAiSessions("project-1");
+    await api.createAiSession("project-1", "新会话");
+    await api.listAiMessages("session-1");
+    await api.sendAiMessage("session-1", "main", "检查术语");
+    await api.stopAiMessage("session-1");
+    await api.retryAiMessage("session-1", "main");
+    await api.listAiAuditJobs("project-1");
+    await api.startAiAudit("project-1", query.filters, {
+      categories: ["accuracy"],
+      minConfidence: 0.8,
+      allowRewrite: true,
+    });
+    await api.pauseAiAudit("audit-1");
+    await api.resumeAiAudit("audit-1");
+    await api.listAiAuditFindings("audit-1");
+    await api.decideAiAuditFinding("finding-1", "edited", "Edited target");
+    await api.acceptAllAiAuditFindings("audit-1");
+    await api.applyAiAudit("audit-1");
     await api.confirmAppClose();
 
     expect(invoke.mock.calls).toEqual([
@@ -92,6 +132,28 @@ describe("desktop IPC contract", () => {
       [IPC_CHANNELS.requests.backupDatabase],
       [IPC_CHANNELS.requests.restoreDatabase],
       [IPC_CHANNELS.requests.openDataDirectory],
+      [IPC_CHANNELS.requests.getAiSettings],
+      [IPC_CHANNELS.requests.saveDeepSeekKey, "sk-secret"],
+      [IPC_CHANNELS.requests.verifyDeepSeekConnection],
+      [IPC_CHANNELS.requests.deleteDeepSeekKey],
+      [IPC_CHANNELS.requests.listAiSessions, "project-1"],
+      [IPC_CHANNELS.requests.createAiSession, "project-1", "新会话"],
+      [IPC_CHANNELS.requests.listAiMessages, "session-1", "main"],
+      [IPC_CHANNELS.requests.sendAiMessage, "session-1", "main", "检查术语"],
+      [IPC_CHANNELS.requests.stopAiMessage, "session-1"],
+      [IPC_CHANNELS.requests.retryAiMessage, "session-1", "main"],
+      [IPC_CHANNELS.requests.listAiAuditJobs, "project-1"],
+      [IPC_CHANNELS.requests.startAiAudit, "project-1", query.filters, {
+        categories: ["accuracy"],
+        minConfidence: 0.8,
+        allowRewrite: true,
+      }],
+      [IPC_CHANNELS.requests.pauseAiAudit, "audit-1"],
+      [IPC_CHANNELS.requests.resumeAiAudit, "audit-1"],
+      [IPC_CHANNELS.requests.listAiAuditFindings, "audit-1"],
+      [IPC_CHANNELS.requests.decideAiAuditFinding, "finding-1", "edited", "Edited target"],
+      [IPC_CHANNELS.requests.acceptAllAiAuditFindings, "audit-1"],
+      [IPC_CHANNELS.requests.applyAiAudit, "audit-1"],
       [IPC_CHANNELS.requests.confirmAppClose],
     ]);
   });
@@ -108,14 +170,20 @@ describe("desktop IPC contract", () => {
     const unsubscribeExport = api.onExportProgress(exportListener);
     const closeListener = vi.fn();
     const unsubscribeClose = api.onAppCloseRequested(closeListener);
+    const agentListener = vi.fn();
+    const unsubscribeAgent = api.onAiAgentEvent(agentListener);
+    const auditListener = vi.fn();
+    const unsubscribeAudit = api.onAiAuditEvent(auditListener);
 
-    expect(on).toHaveBeenCalledTimes(3);
+    expect(on).toHaveBeenCalledTimes(5);
     expect(typeof unsubscribeImport).toBe("function");
     expect(typeof unsubscribeExport).toBe("function");
 
     const importWrapper = on.mock.calls[0][1];
     const exportWrapper = on.mock.calls[1][1];
     const closeWrapper = on.mock.calls[2][1];
+    const agentWrapper = on.mock.calls[3][1];
+    const auditWrapper = on.mock.calls[4][1];
     const importProgress = { operationId: "i" } as ImportProgress;
     const exportProgress = { operationId: "e" } as ExportProgress;
     importWrapper({}, importProgress);
@@ -124,10 +192,18 @@ describe("desktop IPC contract", () => {
     expect(exportListener).toHaveBeenCalledWith(exportProgress);
     closeWrapper({});
     expect(closeListener).toHaveBeenCalledTimes(1);
+    const agentEvent = { sessionId: "session-1", event: { type: "text-delta", delta: "A" } };
+    agentWrapper({}, agentEvent);
+    expect(agentListener).toHaveBeenCalledWith(agentEvent);
+    const auditEvent = { jobId: "audit-1", event: { type: "finding", count: 1 } };
+    auditWrapper({}, auditEvent);
+    expect(auditListener).toHaveBeenCalledWith(auditEvent);
 
     unsubscribeImport();
     unsubscribeExport();
     unsubscribeClose();
+    unsubscribeAgent();
+    unsubscribeAudit();
     expect(removeListener).toHaveBeenCalledWith(
       IPC_CHANNELS.events.importProgress,
       importWrapper,
@@ -139,6 +215,14 @@ describe("desktop IPC contract", () => {
     expect(removeListener).toHaveBeenCalledWith(
       IPC_CHANNELS.events.appCloseRequested,
       closeWrapper,
+    );
+    expect(removeListener).toHaveBeenCalledWith(
+      IPC_CHANNELS.events.aiAgentEvent,
+      agentWrapper,
+    );
+    expect(removeListener).toHaveBeenCalledWith(
+      IPC_CHANNELS.events.aiAuditEvent,
+      auditWrapper,
     );
   });
 });

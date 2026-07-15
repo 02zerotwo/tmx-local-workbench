@@ -1,6 +1,8 @@
 import type {
   ExportProgress,
   ImportProgress,
+  AiAgentEvent,
+  AiAuditEvent,
   TmxDesktopApi,
 } from "../src/lib/desktop-types";
 import { IPC_CHANNELS } from "./ipc/channels";
@@ -82,6 +84,84 @@ export function createDesktopApi(ipcRenderer: IpcRendererBridge): TmxDesktopApi 
     openDataDirectory: () => ipcRenderer.invoke(
       IPC_CHANNELS.requests.openDataDirectory,
     ) as ReturnType<TmxDesktopApi["openDataDirectory"]>,
+    getAiSettings: () => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.getAiSettings,
+    ) as ReturnType<TmxDesktopApi["getAiSettings"]>,
+    saveDeepSeekKey: (apiKey) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.saveDeepSeekKey,
+      apiKey,
+    ) as ReturnType<TmxDesktopApi["saveDeepSeekKey"]>,
+    verifyDeepSeekConnection: () => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.verifyDeepSeekConnection,
+    ) as ReturnType<TmxDesktopApi["verifyDeepSeekConnection"]>,
+    deleteDeepSeekKey: () => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.deleteDeepSeekKey,
+    ) as ReturnType<TmxDesktopApi["deleteDeepSeekKey"]>,
+    listAiSessions: (projectId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.listAiSessions,
+      projectId,
+    ) as ReturnType<TmxDesktopApi["listAiSessions"]>,
+    createAiSession: (projectId, title) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.createAiSession,
+      projectId,
+      title,
+    ) as ReturnType<TmxDesktopApi["createAiSession"]>,
+    listAiMessages: (sessionId, branchId = "main") => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.listAiMessages,
+      sessionId,
+      branchId,
+    ) as ReturnType<TmxDesktopApi["listAiMessages"]>,
+    sendAiMessage: (sessionId, branchId, content) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.sendAiMessage,
+      sessionId,
+      branchId,
+      content,
+    ) as ReturnType<TmxDesktopApi["sendAiMessage"]>,
+    stopAiMessage: (sessionId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.stopAiMessage,
+      sessionId,
+    ) as ReturnType<TmxDesktopApi["stopAiMessage"]>,
+    retryAiMessage: (sessionId, branchId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.retryAiMessage,
+      sessionId,
+      branchId,
+    ) as ReturnType<TmxDesktopApi["retryAiMessage"]>,
+    listAiAuditJobs: (projectId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.listAiAuditJobs,
+      projectId,
+    ) as ReturnType<TmxDesktopApi["listAiAuditJobs"]>,
+    startAiAudit: (projectId, filters, boundaries) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.startAiAudit,
+      projectId,
+      filters,
+      boundaries,
+    ) as ReturnType<TmxDesktopApi["startAiAudit"]>,
+    pauseAiAudit: (jobId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.pauseAiAudit,
+      jobId,
+    ) as ReturnType<TmxDesktopApi["pauseAiAudit"]>,
+    resumeAiAudit: (jobId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.resumeAiAudit,
+      jobId,
+    ) as ReturnType<TmxDesktopApi["resumeAiAudit"]>,
+    listAiAuditFindings: (jobId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.listAiAuditFindings,
+      jobId,
+    ) as ReturnType<TmxDesktopApi["listAiAuditFindings"]>,
+    decideAiAuditFinding: (findingId, decision, editedTargetText) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.decideAiAuditFinding,
+      findingId,
+      decision,
+      editedTargetText,
+    ) as ReturnType<TmxDesktopApi["decideAiAuditFinding"]>,
+    acceptAllAiAuditFindings: (jobId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.acceptAllAiAuditFindings,
+      jobId,
+    ) as ReturnType<TmxDesktopApi["acceptAllAiAuditFindings"]>,
+    applyAiAudit: (jobId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.applyAiAudit,
+      jobId,
+    ) as ReturnType<TmxDesktopApi["applyAiAudit"]>,
     confirmAppClose: () => ipcRenderer.invoke(
       IPC_CHANNELS.requests.confirmAppClose,
     ) as ReturnType<TmxDesktopApi["confirmAppClose"]>,
@@ -93,6 +173,12 @@ export function createDesktopApi(ipcRenderer: IpcRendererBridge): TmxDesktopApi 
     ),
     onAppCloseRequested: (listener) => (
       subscribe(IPC_CHANNELS.events.appCloseRequested, listener)
+    ),
+    onAiAgentEvent: (listener: (event: AiAgentEvent) => void) => (
+      subscribe(IPC_CHANNELS.events.aiAgentEvent, listener)
+    ),
+    onAiAuditEvent: (listener: (event: AiAuditEvent) => void) => (
+      subscribe(IPC_CHANNELS.events.aiAuditEvent, listener)
     ),
   };
 }

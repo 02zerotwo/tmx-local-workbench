@@ -1,6 +1,14 @@
 "use client";
 
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PROJECT_PAGE_SIZES, type ProjectPageSize } from "@/lib/desktop-types";
 
 type PaginationProps = {
@@ -28,19 +36,22 @@ export function Pagination({
       <span className="mr-auto tabular-nums">
         {total.toLocaleString()} 条，第 {firstVisible.toLocaleString()}-{lastVisible.toLocaleString()} 条
       </span>
-      <label className="flex items-center gap-2" htmlFor="page-size">
-        每页
-        <select
-          className="h-8 rounded border border-slate-300 bg-white px-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-          id="page-size"
-          onChange={(event) => onPageSizeChange(Number(event.target.value) as ProjectPageSize)}
-          value={pageSize}
+      <div className="flex items-center gap-2">
+        <span id="page-size-label">每页</span>
+        <Select
+          onValueChange={(value) => onPageSizeChange(Number(value) as ProjectPageSize)}
+          value={String(pageSize)}
         >
-          {PROJECT_PAGE_SIZES.map((size) => (
-            <option key={size} value={size}>{size}</option>
-          ))}
-        </select>
-      </label>
+          <SelectTrigger aria-labelledby="page-size-label" className="h-8 w-20 rounded-md bg-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PROJECT_PAGE_SIZES.map((size) => (
+              <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <span className="min-w-24 text-center tabular-nums">第 {page} / {pageCount} 页</span>
       <PageButton disabled={page <= 1} label="第一页" onClick={() => onPageChange(1)}>
         <ChevronFirst size={16} />
@@ -70,15 +81,17 @@ function PageButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
       aria-label={label}
-      className="inline-flex size-8 cursor-pointer items-center justify-center rounded border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+      className="text-slate-700 disabled:opacity-40"
       disabled={disabled}
       onClick={onClick}
+      size="icon"
       title={label}
       type="button"
+      variant="outline"
     >
       {children}
-    </button>
+    </Button>
   );
 }

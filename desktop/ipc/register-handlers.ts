@@ -17,6 +17,10 @@ import type {
 import { PROJECT_PAGE_SIZES } from "../../src/lib/desktop-types";
 import type { ProjectRepository } from "../database/project-repository";
 import type { UnitRepository } from "../database/unit-repository";
+import type { DeepSeekSettingsService } from "../ai/settings-service";
+import type { TranslationAgentService } from "../ai/translation-agent-service";
+import type { AuditWorkflowService } from "../ai/audit-workflow";
+import type { AuditBoundaries, AuditFindingDecision } from "../database/ai-audit-repository";
 import { importTmxProject } from "../import/import-service";
 import { IPC_CHANNELS } from "./channels";
 
@@ -53,6 +57,27 @@ export type DesktopHandlerDependencies = {
   databasePath: string;
   projectRepository: ProjectRepository;
   unitRepository: UnitRepository;
+  aiSettingsService?: Pick<
+    DeepSeekSettingsService,
+    "getStatus" | "saveAndVerifyKey" | "verifyConnection" | "deleteKey" | "getModel"
+  >;
+  aiAgentService?: Pick<
+    TranslationAgentService,
+    "listSessions" | "createSession" | "listMessages" | "sendMessage" | "stopMessage" | "retryLastMessage"
+  >;
+  aiAuditService?: Pick<
+    AuditWorkflowService,
+    | "createJob"
+    | "getJob"
+    | "listJobs"
+    | "listFindings"
+    | "setFindingDecision"
+    | "acceptAllPendingFindings"
+    | "runJob"
+    | "pauseJob"
+    | "resumeJob"
+    | "applyConfirmed"
+  >;
   exportProject?: ExportProjectOperation;
   backupDatabase?: (suggestedFilePath: string) => Promise<string>;
   restoreDatabase?: (backupPath: string) => Promise<boolean>;
@@ -118,6 +143,30 @@ function parseProjectQuery(value: unknown): ProjectQuery {
     filters: parseFilters(query.filters),
     page: Number(query.page),
     pageSize: query.pageSize as ProjectPageSize,
+  };
+}
+
+function parseAuditBoundaries(value: unknown): AuditBoundaries {
+  const boundaries = plainRecord(value, "审查边界");
+  const categories = boundaries.categories;
+  if (
+    !Array.isArray(categories)
+    || categories.length === 0
+    || !categories.every((category) => typeof category === "string" && category.trim())
+  ) {
+    throw new Error("审查类别参数无效");
+  }
+  const minConfidence = Number(boundaries.minConfidence);
+  if (!Number.isFinite(minConfidence) || minConfidence < 0 || minConfidence > 1) {
+    throw new Error("审查置信度参数无效");
+  }
+  if (typeof boundaries.allowRewrite !== "boolean") {
+    throw new Error("自动纠正边界参数无效");
+  }
+  return {
+    categories: [...new Set(categories.map((category) => category.trim()))],
+    minConfidence,
+    allowRewrite: boundaries.allowRewrite,
   };
 }
 
@@ -331,7 +380,174 @@ export function registerDesktopHandlers(
       throw new Error(`无法打开数据目录：${error}`);
     }
   });
+  register(dependencies, requests.getAiSettings, (event) => {
+    requireTrustedAiSender(dependencies, event);
+    return dependencies.aiSettingsService!.getStatus();
+  });
+  register(dependencies, requests.saveDeepSeekKey, (event, apiKey) => {
+    requireTrustedAiSender(dependencies, event);
+    const value = requiredString(apiKey, "DeepSeek API Key");
+    if (value.length > 512) {
+      throw new Error("DeepSeek API Key 长度无效");
+    }
+    return dependencies.aiSettingsService!.saveAndVerifyKey(value);
+  });
+  register(dependencies, requests.verifyDeepSeekConnection, (event) => {
+    requireTrustedAiSender(dependencies, event);
+    return dependencies.aiSettingsService!.verifyConnection();
+  });
+  register(dependencies, requests.deleteDeepSeekKey, (event) => {
+    requireTrustedAiSender(dependencies, event);
+    return dependencies.aiSettingsService!.deleteKey();
+  });
+  register(dependencies, requests.listAiSessions, (event, projectId) => {
+    requireTrustedAgentSender(dependencies, event);
+    return dependencies.aiAgentService!.listSessions(requiredString(projectId, "项目 ID"));
+  });
+  register(dependencies, requests.createAiSession, (event, projectId, title) => {
+    requireTrustedAgentSender(dependencies, event);
+    return dependencies.aiAgentService!.createSession(
+      requiredString(projectId, "项目 ID"),
+      requiredString(title, "会话标题"),
+      dependencies.aiSettingsService!.getModel(),
+    );
+  });
+  register(dependencies, requests.listAiMessages, (event, sessionId, branchId) => {
+    requireTrustedAgentSender(dependencies, event);
+    return dependencies.aiAgentService!.listMessages(
+      requiredString(sessionId, "会话 ID"),
+      requiredString(branchId, "会话分支"),
+    );
+  });
+  register(dependencies, requests.sendAiMessage, (event, sessionId, branchId, content) => {
+    requireTrustedAgentSender(dependencies, event);
+    const id = requiredString(sessionId, "会话 ID");
+    return dependencies.aiAgentService!.sendMessage({
+      sessionId: id,
+      branchId: requiredString(branchId, "会话分支"),
+      content: requiredString(content, "消息内容"),
+      onEvent: (agentEvent) => sendProgress(event, events.aiAgentEvent, {
+        sessionId: id,
+        event: agentEvent,
+      }),
+    });
+  });
+  register(dependencies, requests.stopAiMessage, (event, sessionId) => {
+    requireTrustedAgentSender(dependencies, event);
+    return dependencies.aiAgentService!.stopMessage(requiredString(sessionId, "会话 ID"));
+  });
+  register(dependencies, requests.retryAiMessage, (event, sessionId, branchId) => {
+    requireTrustedAgentSender(dependencies, event);
+    const id = requiredString(sessionId, "会话 ID");
+    return dependencies.aiAgentService!.retryLastMessage({
+      sessionId: id,
+      branchId: requiredString(branchId, "会话分支"),
+      onEvent: (agentEvent) => sendProgress(event, events.aiAgentEvent, {
+        sessionId: id,
+        event: agentEvent,
+      }),
+    });
+  });
+  register(dependencies, requests.listAiAuditJobs, (event, projectId) => {
+    requireTrustedAuditSender(dependencies, event);
+    return dependencies.aiAuditService!.listJobs(requiredString(projectId, "项目 ID"));
+  });
+  register(dependencies, requests.startAiAudit, (event, projectId, filters, boundaries) => {
+    requireTrustedAuditSender(dependencies, event);
+    const job = dependencies.aiAuditService!.createJob({
+      projectId: requiredString(projectId, "项目 ID"),
+      filters: parseFilters(filters),
+      boundaries: parseAuditBoundaries(boundaries),
+      model: dependencies.aiSettingsService!.getModel(),
+    });
+    void dependencies.aiAuditService!.runJob(job.id, (auditEvent) => {
+      sendProgress(event, events.aiAuditEvent, { jobId: job.id, event: auditEvent });
+    });
+    return dependencies.aiAuditService!.getJob(job.id) ?? job;
+  });
+  register(dependencies, requests.pauseAiAudit, (event, jobId) => {
+    requireTrustedAuditSender(dependencies, event);
+    return dependencies.aiAuditService!.pauseJob(requiredString(jobId, "审查任务 ID"));
+  });
+  register(dependencies, requests.resumeAiAudit, (event, jobId) => {
+    requireTrustedAuditSender(dependencies, event);
+    const id = requiredString(jobId, "审查任务 ID");
+    void dependencies.aiAuditService!.resumeJob(id, (auditEvent) => {
+      sendProgress(event, events.aiAuditEvent, { jobId: id, event: auditEvent });
+    });
+    const job = dependencies.aiAuditService!.getJob(id);
+    if (!job) throw new Error("审查任务不存在");
+    return job;
+  });
+  register(dependencies, requests.listAiAuditFindings, (event, jobId) => {
+    requireTrustedAuditSender(dependencies, event);
+    return dependencies.aiAuditService!.listFindings(requiredString(jobId, "审查任务 ID"));
+  });
+  register(dependencies, requests.decideAiAuditFinding, (
+    event,
+    findingId,
+    decision,
+    editedTargetText,
+  ) => {
+    requireTrustedAuditSender(dependencies, event);
+    const allowed: AuditFindingDecision[] = [
+      "pending", "accepted", "rejected", "edited", "skipped", "stale",
+    ];
+    const nextDecision = requiredString(decision, "建议决定") as AuditFindingDecision;
+    if (!allowed.includes(nextDecision)) throw new Error("建议决定参数无效");
+    return dependencies.aiAuditService!.setFindingDecision(
+      requiredString(findingId, "审查建议 ID"),
+      nextDecision,
+      editedTargetText === undefined || editedTargetText === null
+        ? null
+        : requiredString(editedTargetText, "编辑后的译文", true),
+    );
+  });
+  register(dependencies, requests.applyAiAudit, (event, jobId) => {
+    requireTrustedAuditSender(dependencies, event);
+    return dependencies.aiAuditService!.applyConfirmed(
+      requiredString(jobId, "审查任务 ID"),
+    );
+  });
+  register(dependencies, requests.acceptAllAiAuditFindings, (event, jobId) => {
+    requireTrustedAuditSender(dependencies, event);
+    return dependencies.aiAuditService!.acceptAllPendingFindings(
+      requiredString(jobId, "审查任务 ID"),
+    );
+  });
   register(dependencies, requests.confirmAppClose, () => {
     dependencies.confirmAppClose();
   });
+}
+
+function requireTrustedAuditSender(
+  dependencies: DesktopHandlerDependencies,
+  event: IpcMainInvokeEvent,
+): void {
+  requireTrustedAiSender(dependencies, event);
+  if (!dependencies.aiAuditService) {
+    throw new Error("AI 审查服务尚未就绪");
+  }
+}
+
+function requireTrustedAgentSender(
+  dependencies: DesktopHandlerDependencies,
+  event: IpcMainInvokeEvent,
+): void {
+  requireTrustedAiSender(dependencies, event);
+  if (!dependencies.aiAgentService) {
+    throw new Error("AI Agent 服务尚未就绪");
+  }
+}
+
+function requireTrustedAiSender(
+  dependencies: DesktopHandlerDependencies,
+  event: IpcMainInvokeEvent,
+): void {
+  if (!dependencies.isTrustedSender(event)) {
+    throw new Error("拒绝来自不受信任页面的 AI 请求");
+  }
+  if (!dependencies.aiSettingsService) {
+    throw new Error("AI 设置服务尚未就绪");
+  }
 }

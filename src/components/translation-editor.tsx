@@ -3,6 +3,8 @@
 import {
   ArrowLeft,
   ArrowRight,
+  CaseSensitive as CaseSensitiveIcon,
+  CaseUpper,
   ChevronDown,
   ChevronUp,
   Copy,
@@ -13,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  Fragment,
   forwardRef,
   useCallback,
   useEffect,
@@ -27,6 +30,15 @@ import type {
   TranslationTextUpdate,
   TranslationUnitRow,
 } from "@/lib/desktop-types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type TranslationEditorHandle = {
   flushUntilSaved: () => Promise<void>;
@@ -57,6 +69,8 @@ type TextSelection = {
   start: number;
   end: number;
 };
+
+type TextMatch = TextSelection;
 
 type CopyFeedback = {
   field: "source" | "target";
@@ -90,7 +104,9 @@ export const TranslationEditor = forwardRef<
   const [lastSavedAt, setLastSavedAt] = useState(row.updatedAt);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [findExpanded, setFindExpanded] = useState(false);
+  const [findDraft, setFindDraft] = useState("");
   const [findQuery, setFindQuery] = useState("");
+  const [caseSensitive, setCaseSensitive] = useState(false);
   const [replacement, setReplacement] = useState("");
   const [currentMatch, setCurrentMatch] = useState(0);
   const [selectionVersion, setSelectionVersion] = useState(0);
@@ -108,6 +124,7 @@ export const TranslationEditor = forwardRef<
   });
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null);
   const targetTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const targetHighlightRef = useRef<HTMLDivElement>(null);
   const historyButtonRef = useRef<HTMLButtonElement>(null);
   const historyCloseButtonRef = useRef<HTMLButtonElement>(null);
   const historyWasOpenRef = useRef(false);
@@ -300,8 +317,8 @@ export const TranslationEditor = forwardRef<
   }, [historyOpen]);
 
   const matches = useMemo(
-    () => findMatchIndices(targetDraft, findQuery),
-    [targetDraft, findQuery],
+    () => findMatchRanges(targetDraft, findQuery, caseSensitive),
+    [caseSensitive, findQuery, targetDraft],
   );
   const activeMatch =
     matches.length === 0 ? 0 : Math.min(currentMatch, matches.length - 1);
@@ -316,20 +333,42 @@ export const TranslationEditor = forwardRef<
       return;
     }
     const normalized = (index + nextMatches.length) % nextMatches.length;
-    const start = nextMatches[normalized];
-    queueSelection({ start, end: start + findQuery.length });
+    queueSelection(nextMatches[normalized]);
     setCurrentMatch(normalized);
   };
 
-  const updateFindQuery = (value: string) => {
-    setFindQuery(value);
+  const updateFindDraft = (value: string) => {
+    setFindDraft(value);
+    setFindQuery("");
     setCurrentMatch(0);
-    const nextMatches = findMatchIndices(draftRef.current.targetText, value);
-    if (value && nextMatches.length > 0) {
-      queueSelection({
-        start: nextMatches[0],
-        end: nextMatches[0] + value.length,
-      });
+  };
+
+  const submitFind = (nextCaseSensitive = caseSensitive) => {
+    setFindQuery(findDraft);
+    setCurrentMatch(0);
+    const nextMatches = findMatchRanges(
+      draftRef.current.targetText,
+      findDraft,
+      nextCaseSensitive,
+    );
+    if (findDraft && nextMatches.length > 0) {
+      queueSelection(nextMatches[0]);
+    }
+  };
+
+  const toggleCaseSensitive = () => {
+    const nextCaseSensitive = !caseSensitive;
+    setCaseSensitive(nextCaseSensitive);
+    if (findQuery) {
+      setCurrentMatch(0);
+      const nextMatches = findMatchRanges(
+        draftRef.current.targetText,
+        findQuery,
+        nextCaseSensitive,
+      );
+      if (nextMatches.length > 0) {
+        queueSelection(nextMatches[0]);
+      }
     }
   };
 
@@ -338,26 +377,28 @@ export const TranslationEditor = forwardRef<
       return;
     }
     const currentDraft = draftRef.current.targetText;
-    const currentMatches = findMatchIndices(currentDraft, findQuery);
+    const currentMatches = findMatchRanges(
+      currentDraft,
+      findQuery,
+      caseSensitive,
+    );
     if (currentMatches.length === 0) {
       return;
     }
     const currentIndex = Math.min(activeMatch, currentMatches.length - 1);
-    const start = currentMatches[currentIndex];
-    const nextDraft = `${currentDraft.slice(0, start)}${replacement}${currentDraft.slice(start + findQuery.length)}`;
-    const nextMatches = findMatchIndices(nextDraft, findQuery);
+    const currentRange = currentMatches[currentIndex];
+    const { start, end } = currentRange;
+    const nextDraft = `${currentDraft.slice(0, start)}${replacement}${currentDraft.slice(end)}`;
+    const nextMatches = findMatchRanges(nextDraft, findQuery, caseSensitive);
     const replacementEnd = start + replacement.length;
     const nextLogicalStart =
-      nextMatches.find((index) => index >= replacementEnd) ??
-      nextMatches.find((index) => index < start);
+      nextMatches.find((match) => match.start >= replacementEnd) ??
+      nextMatches.find((match) => match.start < start);
     changeDraft("targetText", nextDraft);
     if (nextLogicalStart !== undefined) {
       const nextMatch = nextMatches.indexOf(nextLogicalStart);
       setCurrentMatch(nextMatch);
-      queueSelection({
-        start: nextLogicalStart,
-        end: nextLogicalStart + findQuery.length,
-      });
+      queueSelection(nextLogicalStart);
     } else {
       setCurrentMatch(0);
       queueSelection({
@@ -372,16 +413,45 @@ export const TranslationEditor = forwardRef<
       return;
     }
     const currentDraft = draftRef.current.targetText;
-    const nextDraft = replaceLiteralAll(currentDraft, findQuery, replacement);
-    const nextMatches = findMatchIndices(nextDraft, findQuery);
+    const nextDraft = replaceLiteralAll(
+      currentDraft,
+      findQuery,
+      replacement,
+      caseSensitive,
+    );
+    const nextMatches = findMatchRanges(nextDraft, findQuery, caseSensitive);
     changeDraft("targetText", nextDraft);
     setCurrentMatch(0);
     if (nextMatches.length > 0) {
-      queueSelection({
-        start: nextMatches[0],
-        end: nextMatches[0] + findQuery.length,
-      });
+      queueSelection(nextMatches[0]);
     }
+  };
+
+  const capitalizeTargetSelection = () => {
+    const textarea = targetTextareaRef.current;
+    if (!textarea || textarea.selectionStart === textarea.selectionEnd) {
+      return;
+    }
+    const currentDraft = draftRef.current.targetText;
+    const selection = {
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd,
+    };
+    const selectedText = currentDraft.slice(selection.start, selection.end);
+    const capitalizedSelection = capitalizeFirstEnglishLetter(selectedText);
+    const nextDraft = `${currentDraft.slice(0, selection.start)}${capitalizedSelection}${currentDraft.slice(selection.end)}`;
+    if (nextDraft !== currentDraft) {
+      changeDraft("targetText", nextDraft);
+    }
+    queueSelection(selection);
+  };
+
+  const syncHighlightScroll = (textarea: HTMLTextAreaElement) => {
+    if (!targetHighlightRef.current) {
+      return;
+    }
+    targetHighlightRef.current.scrollTop = textarea.scrollTop;
+    targetHighlightRef.current.scrollLeft = textarea.scrollLeft;
   };
 
   const resetTranslation = () => {
@@ -474,16 +544,18 @@ export const TranslationEditor = forwardRef<
               {formatSaveState(saveState, lastSavedAt)}
             </span>
           </div>
-          <button
+          <Button
             aria-label="修改记录"
             className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onClick={() => setHistoryOpen(true)}
             ref={historyButtonRef}
+            size="sm"
             type="button"
+            variant="outline"
           >
             <History size={14} />
             记录
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -521,7 +593,7 @@ export const TranslationEditor = forwardRef<
               </IconButton>
             </div>
           </div>
-          <textarea
+          <Textarea
             aria-label="源文本"
             className="min-h-28 w-full resize-y rounded border border-slate-300 bg-white p-3 text-sm leading-6 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             disabled={interactionLocked}
@@ -560,6 +632,14 @@ export const TranslationEditor = forwardRef<
               </IconButton>
               <IconButton
                 disabled={interactionLocked}
+                label="选中区域首字母大写"
+                onClick={capitalizeTargetSelection}
+                title="将选中区域的首个英文字母转为大写"
+              >
+                <CaseUpper size={15} />
+              </IconButton>
+              <IconButton
+                disabled={interactionLocked}
                 label="恢复原文"
                 onClick={resetTranslation}
                 title="恢复原文"
@@ -579,25 +659,63 @@ export const TranslationEditor = forwardRef<
 
           {findExpanded ? (
             <div className="mb-2 space-y-2 rounded border border-slate-200 bg-white p-2">
-              <div className="grid grid-cols-2 gap-2">
-                <textarea
+              <div className="flex min-w-0 gap-1">
+                <Textarea
                   aria-label="查找内容"
-                  className="h-8 min-w-0 resize-none rounded border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  className="h-8 min-w-0 flex-1 resize-none rounded border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                   disabled={interactionLocked}
-                  onChange={(event) => updateFindQuery(event.target.value)}
+                  onChange={(event) => updateFindDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === "Enter"
+                      && !event.shiftKey
+                      && !event.nativeEvent.isComposing
+                    ) {
+                      event.preventDefault();
+                      submitFind();
+                    }
+                  }}
                   placeholder="查找"
                   rows={1}
-                  value={findQuery}
+                  value={findDraft}
                 />
-                <input
-                  aria-label="替换为"
-                  className="h-8 min-w-0 rounded border border-slate-300 px-2 text-xs outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                <Button
+                  aria-label="区分大小写"
+                  aria-pressed={caseSensitive}
+                  className={
+                    caseSensitive
+                      ? "inline-flex size-8 shrink-0 items-center justify-center rounded border border-blue-600 bg-blue-50 text-blue-700 outline-none focus:ring-2 focus:ring-blue-500"
+                      : "inline-flex size-8 shrink-0 items-center justify-center rounded border border-slate-300 text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  }
                   disabled={interactionLocked}
-                  onChange={(event) => setReplacement(event.target.value)}
-                  placeholder="替换为"
-                  value={replacement}
-                />
+                  onClick={toggleCaseSensitive}
+                  title="区分大小写"
+                  size="icon-sm"
+                  type="button"
+                  variant={caseSensitive ? "secondary" : "outline"}
+                >
+                  <CaseSensitiveIcon size={15} />
+                </Button>
+                <Button
+                  aria-label="执行查找"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded bg-blue-700 text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={interactionLocked || !findDraft}
+                  onClick={() => submitFind()}
+                  title="执行查找（Enter）"
+                  size="icon-sm"
+                  type="button"
+                >
+                  <Search size={14} />
+                </Button>
               </div>
+              <Input
+                aria-label="替换为"
+                className="h-8 w-full min-w-0 rounded border border-slate-300 px-2 text-xs outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                disabled={interactionLocked}
+                onChange={(event) => setReplacement(event.target.value)}
+                placeholder="替换为"
+                value={replacement}
+              />
               <div className="flex min-w-0 items-center gap-1">
                 <span className="mr-auto whitespace-nowrap text-xs tabular-nums text-slate-500">
                   {matches.length === 0
@@ -624,39 +742,61 @@ export const TranslationEditor = forwardRef<
                 >
                   <ChevronDown size={14} />
                 </IconButton>
-                <button
+                <Button
                   className="h-7 whitespace-nowrap rounded border border-slate-300 px-2 text-xs text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
                   disabled={
                     interactionLocked || !findQuery || matches.length === 0
                   }
                   onClick={replaceCurrent}
+                  title="替换当前匹配"
+                  size="sm"
                   type="button"
+                  variant="outline"
                 >
                   替换当前
-                </button>
-                <button
+                </Button>
+                <Button
                   className="h-7 whitespace-nowrap rounded border border-slate-300 px-2 text-xs text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
                   disabled={
                     interactionLocked || !findQuery || matches.length === 0
                   }
                   onClick={replaceAll}
+                  title="替换全部匹配"
+                  size="sm"
                   type="button"
+                  variant="outline"
                 >
                   全部替换
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}
 
-          <textarea
-            aria-label="目标文本"
-            className="min-h-44 w-full resize-y rounded border border-slate-300 bg-white p-3 text-sm leading-6 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-            disabled={interactionLocked}
-            onBlur={() => void flush().catch(() => undefined)}
-            onChange={(event) => changeDraft("targetText", event.target.value)}
-            ref={targetTextareaRef}
-            value={targetDraft}
-          />
+          <div className="relative rounded bg-white">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-px overflow-hidden rounded text-transparent"
+              ref={targetHighlightRef}
+            >
+              <div className="min-h-full whitespace-pre-wrap break-words p-3 text-sm leading-6">
+                <HighlightedText
+                  activeMatch={activeMatch}
+                  matches={matches}
+                  text={targetDraft}
+                />
+              </div>
+            </div>
+            <Textarea
+              aria-label="目标文本"
+              className="relative z-10 min-h-44 w-full resize-y rounded border border-slate-300 bg-transparent p-3 text-sm leading-6 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              disabled={interactionLocked}
+              onBlur={() => void flush().catch(() => undefined)}
+              onChange={(event) => changeDraft("targetText", event.target.value)}
+              onScroll={(event) => syncHighlightScroll(event.currentTarget)}
+              ref={targetTextareaRef}
+              value={targetDraft}
+            />
+          </div>
         </section>
 
         <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">
@@ -736,14 +876,16 @@ export const TranslationEditor = forwardRef<
                             {formatHistoryTime(entry.changedAt)}
                           </time>
                         </div>
-                        <button
+                        <Button
                           className="h-7 shrink-0 rounded border border-slate-300 px-2 text-xs text-slate-700 disabled:opacity-40"
                           disabled={interactionLocked || !onRestoreHistory}
                           onClick={() => void restoreHistory(entry)}
+                          size="sm"
                           type="button"
+                          variant="outline"
                         >
                           恢复此版本
-                        </button>
+                        </Button>
                       </div>
                       <p className="mt-3 text-[11px] font-medium text-slate-500">
                         源文本
@@ -765,14 +907,16 @@ export const TranslationEditor = forwardRef<
                     <p className="text-xs font-semibold text-slate-700">
                       导入版本
                     </p>
-                    <button
+                    <Button
                       className="h-7 shrink-0 rounded border border-slate-300 px-2 text-xs text-slate-700 disabled:opacity-40"
                       disabled={interactionLocked || !onRestoreHistory}
                       onClick={() => void restoreHistory(importedSnapshot)}
+                      size="sm"
                       type="button"
+                      variant="outline"
                     >
                       恢复此版本
-                    </button>
+                    </Button>
                   </div>
                   <p className="mt-3 text-[11px] font-medium text-slate-500">
                     源文本
@@ -815,51 +959,119 @@ export const TranslationEditor = forwardRef<
         >
           <ArrowRight size={16} />
         </TooltipIconButton>
-        <button
+        <Button
           className="inline-flex h-9 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded border border-blue-700 px-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={interactionLocked}
           onClick={() => void saveExplicitly()}
+          size="sm"
           type="button"
+          variant="outline"
         >
           <Save className="shrink-0" size={14} />
           <span className="truncate">立即保存</span>
-        </button>
-        <button
+        </Button>
+        <Button
           className="inline-flex h-9 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded bg-blue-700 px-2 text-xs font-medium text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
           disabled={interactionLocked || !canNext}
           onClick={() => void saveAndNext()}
+          size="sm"
           type="button"
         >
           <Save className="shrink-0" size={14} />
           <span className="truncate">保存并下一条</span>
-        </button>
+        </Button>
       </div>
     </aside>
   );
 });
 
-function findMatchIndices(text: string, query: string) {
+function HighlightedText({
+  activeMatch,
+  matches,
+  text,
+}: {
+  activeMatch: number;
+  matches: TextMatch[];
+  text: string;
+}) {
+  if (matches.length === 0) {
+    return text;
+  }
+
+  let cursor = 0;
+  return (
+    <>
+      {matches.map((match, index) => {
+        const before = text.slice(cursor, match.start);
+        const value = text.slice(match.start, match.end);
+        cursor = match.end;
+        return (
+          <Fragment key={`${match.start}-${match.end}`}>
+            {before}
+            <mark
+              className={
+                index === activeMatch
+                  ? "bg-orange-300 text-transparent"
+                  : "bg-yellow-200 text-transparent"
+              }
+              data-testid="find-highlight"
+            >
+              {index === activeMatch ? (
+                <span data-testid="find-highlight-active">{value}</span>
+              ) : value}
+            </mark>
+          </Fragment>
+        );
+      })}
+      {text.slice(cursor)}
+    </>
+  );
+}
+
+function findMatchRanges(
+  text: string,
+  query: string,
+  caseSensitive: boolean,
+) {
   if (!query) {
     return [];
   }
-  const matches: number[] = [];
-  let start = 0;
-  while (start <= text.length - query.length) {
-    const index = text.indexOf(query, start);
-    if (index === -1) {
-      break;
-    }
-    matches.push(index);
-    start = index + query.length;
-  }
-  return matches;
+  return Array.from(text.matchAll(createLiteralPattern(query, caseSensitive)), (match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+  }));
 }
 
-function replaceLiteralAll(text: string, query: string, replacement: string) {
+function replaceLiteralAll(
+  text: string,
+  query: string,
+  replacement: string,
+  caseSensitive: boolean,
+) {
   if (!query) {
     return text;
   }
-  return text.split(query).join(replacement);
+  return text.replace(
+    createLiteralPattern(query, caseSensitive),
+    () => replacement,
+  );
+}
+
+function createLiteralPattern(query: string, caseSensitive: boolean) {
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escapedQuery, caseSensitive ? "gu" : "giu");
+}
+
+function capitalizeFirstEnglishLetter(text: string) {
+  const match = /[A-Za-z]/.exec(text);
+  if (!match) {
+    return text;
+  }
+  const capitalized = match[0].toUpperCase();
+  if (capitalized === match[0]) {
+    return text;
+  }
+  return `${text.slice(0, match.index)}${capitalized}${text.slice(match.index + 1)}`;
 }
 
 function sameUpdate(left: TranslationTextUpdate, right: TranslationTextUpdate) {
@@ -922,17 +1134,19 @@ function IconButton({
   title: string;
 }) {
   return (
-    <button
+    <Button
       aria-label={label}
       className="inline-flex size-9 shrink-0 items-center justify-center rounded border border-slate-300 text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
       disabled={disabled}
       onClick={onClick}
       ref={buttonRef}
       title={title}
+      size="icon"
       type="button"
+      variant="outline"
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -950,20 +1164,27 @@ function TooltipIconButton({
   shortcut: string;
 }) {
   return (
-    <span className="group relative inline-flex">
-      <button
-        aria-label={label}
-        className="inline-flex size-9 items-center justify-center rounded border border-slate-300 text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={disabled}
-        onClick={onClick}
-        type="button"
-      >
-        {children}
-      </button>
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[11px] text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-        {label} {shortcut}
-      </span>
-    </span>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            aria-label={label}
+            className="inline-flex size-9 items-center justify-center rounded border border-slate-300 text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={disabled}
+            onClick={onClick}
+            size="icon"
+            type="button"
+            variant="outline"
+          >
+            {children}
+            <span className="sr-only">{label} {shortcut}</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {label} {shortcut}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

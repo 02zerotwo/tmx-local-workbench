@@ -1,0 +1,235 @@
+"use client";
+
+import {
+  Bot,
+  CheckSquare,
+  KeyRound,
+  ListChecks,
+  Loader2,
+  MessageSquare,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AgentConversation } from "./agent-conversation";
+import { AuditReviewPanel, AuditSetupPanel } from "./audit-panels";
+import type {
+  DeepSeekSettingsStatus,
+  ProjectFilters,
+  TmxDesktopApi,
+} from "@/lib/desktop-types";
+
+type AiSettingsApi = Pick<
+  TmxDesktopApi,
+  | "getAiSettings"
+  | "saveDeepSeekKey"
+  | "verifyDeepSeekConnection"
+  | "deleteDeepSeekKey"
+  | "listAiSessions"
+  | "createAiSession"
+  | "listAiMessages"
+  | "sendAiMessage"
+  | "stopAiMessage"
+  | "retryAiMessage"
+  | "onAiAgentEvent"
+  | "listAiAuditJobs"
+  | "startAiAudit"
+  | "pauseAiAudit"
+  | "resumeAiAudit"
+  | "listAiAuditFindings"
+  | "decideAiAuditFinding"
+  | "acceptAllAiAuditFindings"
+  | "applyAiAudit"
+  | "onAiAuditEvent"
+>;
+
+type AiModePanelProps = {
+  api: AiSettingsApi;
+  projectId: string;
+  resultCount: number;
+  filters: ProjectFilters;
+  onApplied: () => void;
+};
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "AI 操作失败，请重试";
+}
+
+export function AiModePanel({ api, projectId, resultCount, filters, onApplied }: AiModePanelProps) {
+  const [settings, setSettings] = useState<DeepSeekSettingsStatus | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("conversation");
+  const showReview = useCallback(() => setActiveTab("review"), []);
+
+  useEffect(() => {
+    let active = true;
+    api.getAiSettings()
+      .then((value) => {
+        if (active) {
+          setSettings(value);
+          setError("");
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (active) {
+          setError(errorMessage(loadError));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+    return () => { active = false; };
+  }, [api]);
+
+  const saveKey = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      setSettings(await api.saveDeepSeekKey(apiKey));
+      setApiKey("");
+    } catch (saveError) {
+      setError(errorMessage(saveError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      setSettings(await api.verifyDeepSeekConnection());
+    } catch (verifyError) {
+      setError(errorMessage(verifyError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteKey = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      setSettings(await api.deleteDeepSeekKey());
+    } catch (deleteError) {
+      setError(errorMessage(deleteError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-500">
+        <Loader2 className="animate-spin" size={17} />
+        正在检查 AI 配置
+      </div>
+    );
+  }
+
+  if (!settings?.configured) {
+    return (
+      <div className="flex h-full flex-col bg-slate-50">
+        <div className="border-b border-slate-200 bg-white px-4 py-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+            <KeyRound className="text-blue-700" size={17} />
+            配置 DeepSeek API Key
+          </div>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Key 使用系统加密服务保存在本机，不写入项目数据库或导出文件。
+          </p>
+        </div>
+        <div className="space-y-3 p-4">
+          <label className="block text-xs font-medium text-slate-700" htmlFor="deepseek-api-key">
+            DeepSeek API Key
+          </label>
+          <Input
+            aria-label="DeepSeek API Key"
+            autoComplete="off"
+            className="h-10 bg-white"
+            id="deepseek-api-key"
+            onChange={(event) => setApiKey(event.target.value)}
+            placeholder="sk-..."
+            type="password"
+            value={apiKey}
+          />
+          <Button
+            className="h-10 w-full"
+            disabled={busy || !apiKey.trim()}
+            onClick={() => void saveKey()}
+            type="button"
+          >
+            {busy ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+            保存并验证
+          </Button>
+          {error ? <p className="text-xs leading-5 text-red-700" role="alert">{error}</p> : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-slate-50" data-project-id={projectId}>
+      <div className="flex min-h-12 items-center gap-2 border-b border-slate-200 bg-white px-3">
+        <Bot className="text-blue-700" size={17} />
+        <span className="text-sm font-semibold text-slate-950">DeepSeek Agent</span>
+        <Badge className="ml-auto bg-emerald-50 text-emerald-700" variant="secondary">
+          {settings.maskedKey}
+        </Badge>
+        <Button
+          aria-label="验证 AI 连接"
+          disabled={busy}
+          onClick={() => void verify()}
+          size="icon-sm"
+          title="验证连接"
+          variant="ghost"
+        >
+          <RefreshCw className={busy ? "animate-spin" : ""} />
+        </Button>
+        <Button
+          aria-label="删除 API Key"
+          disabled={busy}
+          onClick={() => void deleteKey()}
+          size="icon-sm"
+          title="删除 API Key"
+          variant="ghost"
+        >
+          <Trash2 />
+        </Button>
+      </div>
+      {error ? <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">{error}</div> : null}
+      <Tabs className="flex min-h-0 flex-1 flex-col" onValueChange={setActiveTab} value={activeTab}>
+        <TabsList className="m-2 grid w-auto grid-cols-3 rounded-md" variant="default">
+          <TabsTrigger value="conversation"><MessageSquare />会话</TabsTrigger>
+          <TabsTrigger value="audit"><ListChecks />审查任务</TabsTrigger>
+          <TabsTrigger value="review"><CheckSquare />结果确认</TabsTrigger>
+        </TabsList>
+        <TabsContent className="min-h-0 flex-1 p-2 pt-0" value="conversation">
+          <AgentConversation api={api} projectId={projectId} />
+        </TabsContent>
+        <TabsContent className="min-h-0 flex-1 p-0" value="audit">
+          <AuditSetupPanel
+            api={api}
+            filters={filters}
+            onReviewReady={showReview}
+            projectId={projectId}
+            resultCount={resultCount}
+          />
+        </TabsContent>
+        <TabsContent className="min-h-0 flex-1 p-0" value="review">
+          <AuditReviewPanel api={api} onApplied={onApplied} projectId={projectId} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

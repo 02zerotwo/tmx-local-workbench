@@ -355,7 +355,7 @@ describe("ProjectWorkspace editing", () => {
     const editor = await screen.findByRole("textbox", { name: "目标文本" });
 
     fireEvent.change(editor, { target: { value: "Unsaved before row change" } });
-    fireEvent.click(screen.getByRole("button", { name: "选择 save-1" }));
+    fireEvent.click(screen.getByRole("row", { name: "选择 save-1" }));
     await waitFor(() => expect(api.updateTranslation).toHaveBeenCalledWith(
       "project-1",
       "row-1",
@@ -552,7 +552,7 @@ describe("ProjectWorkspace history", () => {
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     await screen.findByDisplayValue("Reset the alarm");
 
-    fireEvent.click(screen.getByRole("button", { name: "选择 save-1" }));
+    fireEvent.click(screen.getByRole("row", { name: "选择 save-1" }));
     await screen.findByDisplayValue("Einstellungen speichern");
     await openHistoryDrawer();
     rowTwoHistory.resolve([historyEntry("row-2", 2, "Row two history")]);

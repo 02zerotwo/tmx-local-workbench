@@ -4,12 +4,31 @@
 
 :root {
   color-scheme: light;
+  --background: 210 25% 98%;
+  --foreground: 210 23% 13%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 23% 13%;
+  --primary: 216 81% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 25% 95%;
+  --secondary-foreground: 210 23% 20%;
+  --muted: 210 25% 95%;
+  --muted-foreground: 215 14% 42%;
+  --accent: 211 35% 93%;
+  --accent-foreground: 216 81% 32%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 20% 86%;
+  --input: 214 20% 80%;
+  --ring: 216 81% 52%;
+  --radius: 0.375rem;
   background: #edf1f5;
   color: #17202a;
 }
 
 * {
   box-sizing: border-box;
+  border-color: hsl(var(--border));
 }
 
 html,

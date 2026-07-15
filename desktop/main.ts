@@ -1,6 +1,22 @@
 import { accessSync, constants, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  ipcMain,
+  safeStorage,
+  shell,
+} from "electron";
+import { DeepSeekSecretStore } from "./ai/secret-store";
+import { DeepSeekSettingsService } from "./ai/settings-service";
+import { createAgentReplyGenerator } from "./ai/agent-generator";
+import { TranslationAgentService } from "./ai/translation-agent-service";
+import { createAuditAnalyzer } from "./ai/audit-analyzer";
+import { AuditWorkflowService } from "./ai/audit-workflow";
+import { AiAgentRepository } from "./database/ai-agent-repository";
+import { AiAuditRepository } from "./database/ai-audit-repository";
 import { DatabaseBackupService } from "./database/backup-service";
 import { resolveDatabasePath } from "./database/connection";
 import { ProjectRepository } from "./database/project-repository";
@@ -54,6 +70,29 @@ function registerDataHandlers(databasePath: string): void {
 
   const projectRepository = new ProjectRepository(databaseService.database);
   const unitRepository = new UnitRepository(databaseService.database);
+  const aiSettingsService = new DeepSeekSettingsService({
+    db: databaseService.database,
+    secretStore: new DeepSeekSecretStore({
+      directory: dirname(databasePath),
+      safeStorage,
+    }),
+  });
+  const aiAgentService = new TranslationAgentService({
+    repository: new AiAgentRepository(databaseService.database),
+    generateReply: createAgentReplyGenerator({
+      settings: aiSettingsService,
+      projectRepository,
+      unitRepository,
+    }),
+  });
+  const aiAuditRepository = new AiAuditRepository(databaseService.database);
+  aiAuditRepository.recoverInterruptedJobs();
+  const aiAuditService = new AuditWorkflowService({
+    repository: aiAuditRepository,
+    unitRepository,
+    analyzeItem: createAuditAnalyzer(aiSettingsService),
+    transaction: (operation) => databaseService!.database.transaction(operation)(),
+  });
 
   registerDesktopHandlers({
     ipcMain,
@@ -63,6 +102,9 @@ function registerDataHandlers(databasePath: string): void {
     databasePath,
     projectRepository,
     unitRepository,
+    aiSettingsService,
+    aiAgentService,
+    aiAuditService,
     exportProject: ({
       projectId,
       filters,

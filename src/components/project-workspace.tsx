@@ -9,7 +9,9 @@ import {
   FolderOpen,
   Languages,
   Loader2,
+  PencilLine,
   Search,
+  Sparkles,
 } from "lucide-react";
 import {
   startTransition,
@@ -35,6 +37,12 @@ import {
   type WorkspaceAction,
 } from "@/lib/workspace-state";
 import { Pagination } from "./pagination";
+import { AiModePanel } from "./ai/ai-mode-panel";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   TranslationEditor,
   type TranslationEditorHandle,
@@ -76,6 +84,8 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
   const [historyError, setHistoryError] = useState("");
   const [editorNonce, setEditorNonce] = useState(0);
   const [error, setError] = useState("");
+  const [panelMode, setPanelMode] = useState<"edit" | "ai">("edit");
+  const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
   const requestIdRef = useRef(0);
   const lastSuccessfulPageRef = useRef(1);
   const historyRequestIdRef = useRef(0);
@@ -142,6 +152,7 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
     page,
     pageSize,
     project.id,
+    dataRefreshNonce,
   ]);
 
   useEffect(() => api.onExportProgress(setExportProgress), [api]);
@@ -346,15 +357,17 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
   return (
     <main className="flex h-screen min-h-[680px] flex-col overflow-hidden bg-slate-50 text-slate-900">
       <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
-        <button
+        <Button
           aria-label="返回项目库"
           className="inline-flex size-10 cursor-pointer items-center justify-center rounded text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           onClick={() => void leaveWorkspace()}
           title="返回项目库"
+          size="icon"
           type="button"
+          variant="ghost"
         >
           <ArrowLeft size={18} />
-        </button>
+        </Button>
         <span className="inline-flex size-9 items-center justify-center rounded bg-blue-700 text-white">
           <Languages size={18} />
         </span>
@@ -367,16 +380,17 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           <span>已修改 <strong className="ml-1 text-amber-700">{project.changedUnits.toLocaleString()}</strong></span>
           <span>空译文 <strong className="ml-1 text-red-700">{project.emptyUnits.toLocaleString()}</strong></span>
         </div>
-        <button
+        <Button
           className="inline-flex h-10 cursor-pointer items-center gap-2 rounded border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={exporting}
           onClick={() => void exportProject("filtered")}
           type="button"
+          variant="outline"
         >
           <Download size={16} />
           导出筛选
-        </button>
-        <button
+        </Button>
+        <Button
           className="inline-flex h-10 cursor-pointer items-center gap-2 rounded bg-blue-700 px-3 text-sm font-medium text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={exporting}
           onClick={() => void exportProject("all")}
@@ -384,27 +398,19 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
         >
           {exporting ? <Loader2 className="animate-spin" size={16} /> : <FileSpreadsheet size={16} />}
           导出全部
-        </button>
+        </Button>
       </header>
 
       <div className="h-1 shrink-0 bg-slate-200">
         {exportProgress && exporting ? (
-          <div
-            aria-label="导出进度"
-            aria-valuemax={100}
-            aria-valuemin={0}
-            aria-valuenow={exportProgress.percent}
-            className="h-full bg-blue-600 transition-[width]"
-            role="progressbar"
-            style={{ width: `${exportProgress.percent}%` }}
-          />
+          <Progress aria-label="导出进度" className="h-1 rounded-none" value={exportProgress.percent} />
         ) : null}
       </div>
 
       {error ? (
         <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-red-200 bg-red-50 px-4 text-sm text-red-800" role="alert">
           <span className="truncate">{error}</span>
-          <button className="cursor-pointer font-medium focus:outline-none focus:ring-2 focus:ring-red-500" onClick={() => setError("")} type="button">关闭</button>
+          <Button onClick={() => setError("")} size="sm" type="button" variant="ghost">关闭</Button>
         </div>
       ) : null}
 
@@ -419,14 +425,16 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           <span className="min-w-0 flex-1 break-all text-xs text-emerald-800">
             {exportedPath}
           </span>
-          <button
+          <Button
             className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded border border-emerald-300 bg-white px-2.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-600"
             onClick={() => void openExportDirectory()}
+            size="sm"
             type="button"
+            variant="outline"
           >
             <FolderOpen size={14} />
             打开文件夹
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -434,7 +442,7 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
         <label className="relative">
           <span className="sr-only">搜索翻译</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
+          <Input
             aria-label="搜索翻译"
             className="h-10 w-full rounded border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             onChange={(event) => dispatch({ type: "setDraftQuery", query: event.target.value })}
@@ -448,30 +456,30 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
             value={workspace.draftQuery}
           />
         </label>
-        <button
+        <Button
           className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded bg-blue-700 px-3 text-sm font-medium text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           onClick={() => void commitAction({ type: "submitSearch" })}
           type="button"
         >
           <Search size={15} />
           搜索
-        </button>
+        </Button>
         <label>
           <span className="sr-only">目标语言</span>
-          <select
+          <NativeSelect
             aria-label="目标语言"
-            className="h-10 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="w-full"
             onChange={(event) => void commitAction({
               type: "setTargetLanguage",
               targetLanguage: event.target.value,
             })}
             value={filters.targetLanguage}
           >
-            <option value="">全部目标语言</option>
+            <NativeSelectOption value="">全部目标语言</NativeSelectOption>
             {project.targetLanguages.map((language) => (
-              <option key={language} value={language}>{language}</option>
+              <NativeSelectOption key={language} value={language}>{language}</NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </label>
         <div className="grid h-10 grid-cols-3 rounded border border-slate-300 bg-slate-50 p-0.5" role="group" aria-label="翻译状态">
           <StatusButton active={filters.status === "all"} label="全部" onClick={() => void commitAction({ type: "setStatus", status: "all" })} />
@@ -479,14 +487,12 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           <StatusButton active={filters.status === "empty"} label="只看空译文" onClick={() => void commitAction({ type: "setStatus", status: "empty" })} />
         </div>
         <label className="flex h-10 cursor-pointer items-center gap-2 rounded border border-slate-300 px-3 text-sm text-slate-700">
-          <input
+          <Checkbox
             checked={filters.duplicateOnly}
-            className="size-4 accent-blue-700"
-            onChange={(event) => void commitAction({
+            onCheckedChange={(checked) => void commitAction({
               type: "setDuplicateOnly",
-              duplicateOnly: event.target.checked,
+              duplicateOnly: checked === true,
             })}
-            type="checkbox"
           />
           仅重复项
         </label>
@@ -496,14 +502,16 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-3 text-xs text-slate-500">
             <span>{result.total.toLocaleString()} 条结果</span>
-            <button
+            <Button
               className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded px-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               onClick={() => void commitAction({ type: "clearFilters" })}
+              size="sm"
               type="button"
+              variant="ghost"
             >
               <FilterX size={14} />
               清除筛选
-            </button>
+            </Button>
           </div>
           <TranslationTable
             loading={loading}
@@ -522,29 +530,66 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           />
         </div>
 
-        {selectedRow ? (
-          <TranslationEditor
-            canNext={canNext}
-            canPrevious={canPrevious}
-            editingLocked={exporting || pageTransitioning}
-            history={history}
-            historyError={historyError}
-            historyLoading={historyLoading}
-            key={`${selectedRow.rowId}:${editorNonce}`}
-            onNext={() => navigateEditor("next")}
-            onCopyText={api.copyText}
-            onPrevious={() => navigateEditor("previous")}
-            onRestoreHistory={restoreHistory}
-            onSave={saveTranslation}
-            onSaved={applySavedRow}
-            ref={editorRef}
-            row={selectedRow}
-          />
-        ) : (
-          <aside className="flex w-[420px] shrink-0 items-center justify-center border-l border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500">
-            选择一条翻译开始编辑
-          </aside>
-        )}
+        <div className={panelMode === "ai"
+          ? "flex min-h-0 w-[520px] shrink-0 flex-col border-l border-slate-200 bg-slate-50"
+          : "flex min-h-0 w-[420px] shrink-0 flex-col border-l border-slate-200 bg-slate-50"}
+        >
+          <div className="grid h-11 shrink-0 grid-cols-2 gap-1 border-b border-slate-200 bg-white p-1.5">
+            <Button
+              aria-pressed={panelMode === "edit"}
+              onClick={() => setPanelMode("edit")}
+              size="sm"
+              type="button"
+              variant={panelMode === "edit" ? "secondary" : "ghost"}
+            >
+              <PencilLine />
+              编辑
+            </Button>
+            <Button
+              aria-pressed={panelMode === "ai"}
+              onClick={() => setPanelMode("ai")}
+              size="sm"
+              type="button"
+              variant={panelMode === "ai" ? "secondary" : "ghost"}
+            >
+              <Sparkles />
+              AI 模式
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 [&>aside]:h-full [&>aside]:w-full [&>aside]:border-l-0">
+            {panelMode === "ai" ? (
+              <AiModePanel
+                api={api}
+                filters={filters}
+                onApplied={() => setDataRefreshNonce((current) => current + 1)}
+                projectId={project.id}
+                resultCount={result.total}
+              />
+            ) : selectedRow ? (
+              <TranslationEditor
+                canNext={canNext}
+                canPrevious={canPrevious}
+                editingLocked={exporting || pageTransitioning}
+                history={history}
+                historyError={historyError}
+                historyLoading={historyLoading}
+                key={`${selectedRow.rowId}:${editorNonce}`}
+                onNext={() => navigateEditor("next")}
+                onCopyText={api.copyText}
+                onPrevious={() => navigateEditor("previous")}
+                onRestoreHistory={restoreHistory}
+                onSave={saveTranslation}
+                onSaved={applySavedRow}
+                ref={editorRef}
+                row={selectedRow}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
+                选择一条翻译开始编辑
+              </div>
+            )}
+          </div>
+        </div>
       </section>
     </main>
   );
@@ -552,16 +597,18 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
 
 function StatusButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
-    <button
+    <Button
       aria-label={label}
       aria-pressed={active}
       className={active
         ? "cursor-pointer rounded bg-white text-xs font-medium text-blue-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         : "cursor-pointer rounded text-xs font-medium text-slate-600 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500"}
       onClick={onClick}
+      size="sm"
       type="button"
+      variant="ghost"
     >
       {label}
-    </button>
+    </Button>
   );
 }
