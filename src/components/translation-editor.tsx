@@ -666,7 +666,7 @@ export const TranslationEditor = forwardRef<
           <Info label="重复项" value={row.duplicate ? "是" : "否"} />
         </div>
 
-        <div className="mt-2">
+        <div className="mt-5">
           {Object.keys(row.metadata).length > 0 ? (
             <EditorField label="元数据">
               <dl className="space-y-2 rounded border border-slate-200 bg-white p-3 text-xs">
