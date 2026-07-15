@@ -1,0 +1,64 @@
+{
+  "name": "tmx-local-workbench",
+  "productName": "TMX Local Workbench",
+  "version": "0.1.1",
+  "private": true,
+  "main": "dist-desktop/desktop/main.js",
+  "scripts": {
+    "dev": "pnpm desktop:dev",
+    "build": "next build",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "native:node": "pnpm rebuild better-sqlite3",
+    "native:electron": "electron-rebuild -f -w better-sqlite3",
+    "desktop:build": "node -e \"require('node:fs').rmSync('dist-desktop',{recursive:true,force:true})\" && tsc -p tsconfig.desktop.json",
+    "desktop:dev": "pnpm build && pnpm desktop:build && pnpm native:electron && electron .",
+    "desktop:package": "pnpm build && pnpm desktop:build && electron-forge package",
+    "desktop:make": "pnpm build && pnpm desktop:build && electron-forge make",
+    "desktop:make:win": "pnpm build && pnpm desktop:build && pnpm native:electron && electron-forge make --platform win32 --arch x64"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "saxes": "^6.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-zip": "^7.11.2",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.2",
+    "@electron-forge/plugin-fuses": "^7.11.2",
+    "@electron/fuses": "^1.8.0",
+    "@electron/rebuild": "^4.2.0",
+    "@tanstack/react-virtual": "^3.13.12",
+    "@next/eslint-plugin-next": "15.5.20",
+    "@eslint/eslintrc": "^3.3.6",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.19.8",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "autoprefixer": "^10.4.21",
+    "electron": "^43.1.0",
+    "eslint": "^9.31.0",
+    "eslint-config-next": "^15.4.1",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "jsdom": "^26.1.0",
+    "lucide-react": "^0.468.0",
+    "next": "^15.4.1",
+    "postcss": "^8.5.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron"
+    ]
+  }
+}

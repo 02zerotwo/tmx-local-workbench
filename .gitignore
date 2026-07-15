@@ -1,0 +1,11 @@
+.next
+out
+node_modules
+dist
+coverage
+release
+.DS_Store
+*.log
+*.tsbuildinfo
+.pnpm-store/v10
+dist-desktop
