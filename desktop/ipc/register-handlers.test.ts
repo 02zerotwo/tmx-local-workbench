@@ -2,6 +2,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import type { IpcMainInvokeEvent } from "electron";
+import { join } from "node:path";
 import type { ProjectRepository } from "../database/project-repository";
 import type { UnitRepository } from "../database/unit-repository";
 import { IPC_CHANNELS } from "./channels";
@@ -219,11 +220,11 @@ describe("registerDesktopHandlers", () => {
     const handler = handlers.get(IPC_CHANNELS.requests.exportProject)!;
 
     await expect(handler(event, "project-1")).resolves.toBe(
-      "/exports/User manual-2026-07-14.xlsx",
+      join("/exports", "User manual-2026-07-14.xlsx"),
     );
     expect(exportProject).toHaveBeenCalledWith(expect.objectContaining({
       projectId: "project-1",
-      suggestedFilePath: "/exports/User manual-2026-07-14.xlsx",
+      suggestedFilePath: join("/exports", "User manual-2026-07-14.xlsx"),
     }));
     expect(showSaveDialog).not.toHaveBeenCalled();
   });
@@ -237,14 +238,14 @@ describe("registerDesktopHandlers", () => {
 
     await handler(event, "project-1");
     expect(exportProject).toHaveBeenCalledWith(expect.objectContaining({
-      suggestedFilePath: "/exports/Manual_-2026-07-14.xlsx",
+      suggestedFilePath: join("/exports", "Manual_-2026-07-14.xlsx"),
     }));
   });
 
   it("appends an incrementing suffix until the export filename is available", async () => {
     const existingPaths = new Set([
-      "/exports/User manual-2026-07-14.xlsx",
-      "/exports/User manual-2026-07-14 (2).xlsx",
+      join("/exports", "User manual-2026-07-14.xlsx"),
+      join("/exports", "User manual-2026-07-14 (2).xlsx"),
     ]);
     const pathExists = vi.fn((path: string) => existingPaths.has(path));
     const { event, handlers, exportProject } = createHarness({
@@ -256,7 +257,7 @@ describe("registerDesktopHandlers", () => {
     await handler(event, "project-1");
     expect(pathExists).toHaveBeenCalledTimes(3);
     expect(exportProject).toHaveBeenCalledWith(expect.objectContaining({
-      suggestedFilePath: "/exports/User manual-2026-07-14 (3).xlsx",
+      suggestedFilePath: join("/exports", "User manual-2026-07-14 (3).xlsx"),
     }));
   });
 });

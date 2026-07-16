@@ -41,12 +41,22 @@ export function createTemporaryTestDatabase(
         try {
           db.close();
         } finally {
-          rmSync(directory, { force: true, recursive: true });
+          rmSync(directory, {
+            force: true,
+            maxRetries: 5,
+            recursive: true,
+            retryDelay: 50,
+          });
         }
       },
     };
   } catch (error) {
-    rmSync(directory, { force: true, recursive: true });
+    rmSync(directory, {
+      force: true,
+      maxRetries: 5,
+      recursive: true,
+      retryDelay: 50,
+    });
     throw error;
   }
 }

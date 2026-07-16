@@ -2,7 +2,7 @@
 
 import Database from "better-sqlite3";
 import { existsSync, rmSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   openDatabase,
@@ -94,13 +94,13 @@ describe("database connection and migration", () => {
       portableDataDirectory: "/portable/TMX/data",
       portableDataDirectoryWritable: true,
       userDataDirectory: "/user/data",
-    })).toBe("/portable/TMX/data/tmx-workbench.db");
+    })).toBe(join("/portable/TMX/data", "tmx-workbench.db"));
 
     expect(resolveDatabasePath({
       portableDataDirectory: "/portable/TMX/data",
       portableDataDirectoryWritable: false,
       userDataDirectory: "/user/data",
-    })).toBe("/user/data/tmx-workbench.db");
+    })).toBe(join("/user/data", "tmx-workbench.db"));
   });
 
   it("enables foreign keys and uses a memory-safe journal for in-memory tests", () => {
