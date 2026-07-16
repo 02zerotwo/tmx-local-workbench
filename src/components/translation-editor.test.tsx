@@ -164,10 +164,10 @@ describe("TranslationEditor navigation and saving", () => {
     ).toBeVisible();
     expect(
       within(footer).getByRole("button", { name: "立即保存" }),
-    ).toHaveAttribute("data-variant", "ghost");
+    ).toHaveAttribute("data-variant", "default");
     expect(
       within(footer).getByRole("button", { name: "保存并下一条" }),
-    ).toHaveAttribute("data-variant", "ghost");
+    ).toHaveAttribute("data-variant", "default");
     expect(within(footer).getByText(/Alt\+↑/)).toBeInTheDocument();
     expect(within(footer).getByText(/Alt\+↓/)).toBeInTheDocument();
     expect(footer).toHaveClass("h-14");
