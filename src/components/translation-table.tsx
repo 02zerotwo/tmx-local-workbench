@@ -191,7 +191,6 @@ export function TranslationTable({
                           className="gap-1 border-destructive/20 bg-destructive/10 text-destructive"
                           variant="outline"
                         >
-                          <CircleAlert />
                           空译文
                         </Badge>
                       ) : row.changed ? (
@@ -199,7 +198,6 @@ export function TranslationTable({
                           className="gap-1 border-amber-200 bg-amber-50 text-amber-100 dark:border-amber-900/60 dark:bg-amber-950 dark:text-amber-400"
                           variant="outline"
                         >
-                          <PencilLine />
                           已修改
                         </Badge>
                       ) : (
@@ -207,7 +205,6 @@ export function TranslationTable({
                           className="gap-1 text-muted-foreground"
                           variant="secondary"
                         >
-                          <CheckCircle2 />
                           原始
                         </Badge>
                       )}
