@@ -213,18 +213,18 @@ function buildQueryParts(query: ProjectQuery): QueryParts {
     conditions.push("u.duplicate_key IS NOT NULL");
   }
 
-  // 普通搜索一律走 LIKE 模糊匹配，跨 external_id / 原文 / 译文 / 元数据。
+  // 搜索框只对原文（source_text）与译文（target_text）做 LIKE 模糊匹配。
+  // 不搜 external_id / metadata_json：元数据里是导入时的文档级属性（x-document 文件名、
+  // client、domain 等），用户在列表里看不到，搜它会命中一堆原文/译文都不含关键词的行。
   // 用户输入中的 \ % _ 会被转义，避免通配符污染查询。
   const searchText = filters.query.trim();
   if (searchText) {
     const likePattern = `%${escapeLike(searchText)}%`;
     conditions.push(`(
-      u.external_id LIKE ? ESCAPE '\\'
-      OR u.source_text LIKE ? ESCAPE '\\'
+      u.source_text LIKE ? ESCAPE '\\'
       OR u.target_text LIKE ? ESCAPE '\\'
-      OR u.metadata_json LIKE ? ESCAPE '\\'
     )`);
-    values.push(likePattern, likePattern, likePattern, likePattern);
+    values.push(likePattern, likePattern);
   }
 
   return {

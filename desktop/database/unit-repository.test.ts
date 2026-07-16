@@ -472,7 +472,7 @@ describe("UnitRepository filtering and exact search", () => {
     }).total).toBe(0);
   });
 
-  it("matches Chinese, English, and metadata substrings with fuzzy LIKE", () => {
+  it("matches Chinese and English substrings across source and target with fuzzy LIKE", () => {
     expect(query(
       harness.repository,
       harness.projectId,
@@ -489,20 +489,33 @@ describe("UnitRepository filtering and exact search", () => {
     expect(query(
       harness.repository,
       harness.projectId,
-      { query: "calibration" },
-    ).rows.map(({ rowId }) => rowId)).toEqual(["row-changed-en"]);
-    expect(query(
-      harness.repository,
-      harness.projectId,
       { query: "alarmx" },
     ).total).toBe(0);
   });
 
-  it("searches an exact substring from the external ID", () => {
+  it("does not match document-level metadata such as notes or x-document", () => {
+    // "factory calibration warning" only lives in row-changed-en's metadata note,
+    // never in its source/target — so a metadata-only term must return nothing.
     expect(query(
       harness.repository,
       harness.projectId,
-      { query: "original-en" },
+      { query: "calibration" },
+    ).total).toBe(0);
+  });
+
+  it("searches only source and target text, not the external ID", () => {
+    // "external-row-original-en" is row-original-en's external ID, which the
+    // search box no longer looks at — only 原文/译文 are matched.
+    expect(query(
+      harness.repository,
+      harness.projectId,
+      { query: "external-row-original-en" },
+    ).total).toBe(0);
+    // A term that lives in the source text still matches.
+    expect(query(
+      harness.repository,
+      harness.projectId,
+      { query: "设备启动" },
     ).rows.map(({ rowId }) => rowId)).toEqual(["row-original-en"]);
   });
 
@@ -1115,12 +1128,15 @@ describe("translation history schema migration", () => {
       for (const searchText of [
         "legacy source searchable",
         "legacy target searchable",
-        "legacy metadata searchable",
       ]) {
         expect(query(repository, "legacy-project", {
           query: searchText,
         }).rows.map(({ rowId }) => rowId)).toEqual(["legacy-row"]);
       }
+      // Metadata is no longer part of fuzzy search.
+      expect(query(repository, "legacy-project", {
+        query: "legacy metadata searchable",
+      }).total).toBe(0);
       expect(repository.getTranslationHistory(
         "legacy-project",
         "legacy-row",
