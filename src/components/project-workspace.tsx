@@ -9,7 +9,6 @@ import {
   FolderOpen,
   Languages,
   Loader2,
-  PencilLine,
   Search,
   Sparkles,
   X,
@@ -40,8 +39,15 @@ import {
 import { Pagination } from "./pagination";
 import { AiModePanel } from "./ai/ai-mode-panel";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   InputGroup,
   InputGroupAddon,
@@ -62,6 +68,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   TranslationEditor,
   type TranslationEditorHandle,
@@ -107,7 +115,7 @@ export function ProjectWorkspace({
   const [historyError, setHistoryError] = useState("");
   const [editorNonce, setEditorNonce] = useState(0);
   const [error, setError] = useState("");
-  const [panelMode, setPanelMode] = useState<"edit" | "ai">("edit");
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
   const requestIdRef = useRef(0);
   const lastSuccessfulPageRef = useRef(1);
@@ -432,6 +440,15 @@ export function ProjectWorkspace({
           </span>
         </div>
         <Button
+          className="h-9 gap-1.5 text-primary hover:bg-primary/10 hover:text-primary"
+          onClick={() => setAiDrawerOpen(true)}
+          type="button"
+          variant="ghost"
+        >
+          <Sparkles size={16} />
+          AI 助手
+        </Button>
+        <Button
           className="h-9 text-slate-700"
           disabled={exporting}
           onClick={() => void exportProject("filtered")}
@@ -508,8 +525,8 @@ export function ProjectWorkspace({
         </div>
       ) : null}
 
-      <section className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-white p-2">
-        <InputGroup className="h-10 min-w-64 flex-1 bg-white">
+      <section className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-2.5">
+        <InputGroup className="h-9 min-w-56 flex-1 bg-background sm:max-w-sm">
           <InputGroupAddon>
             <Search size={16} />
           </InputGroupAddon>
@@ -543,14 +560,14 @@ export function ProjectWorkspace({
           ) : null}
         </InputGroup>
         <Button
-          className="h-10 shrink-0 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+          className="h-9 shrink-0 gap-1.5"
           onClick={() => void commitAction({ type: "submitSearch" })}
           type="button"
-          variant="ghost"
         >
           <Search size={15} />
           搜索
         </Button>
+        <Separator className="hidden h-6 sm:block" orientation="vertical" />
         <Select
           onValueChange={(value) =>
             void commitAction({
@@ -562,9 +579,9 @@ export function ProjectWorkspace({
         >
           <SelectTrigger
             aria-label="目标语言"
-            className="h-10 w-44 shrink-0 bg-white"
+            className="!h-10 w-40 shrink-0 bg-background"
           >
-            <SelectValue className="h-10" />
+            <SelectValue className="!h-10" />
           </SelectTrigger>
           <SelectContent position="popper">
             <SelectItem value="__all__">全部目标语言</SelectItem>
@@ -575,33 +592,43 @@ export function ProjectWorkspace({
             ))}
           </SelectContent>
         </Select>
-        <ButtonGroup
+        <ToggleGroup
           aria-label="翻译状态"
-          className="grid h-10 shrink-0 grid-cols-3 rounded-lg bg-slate-100 p-1"
+          className="grid h-full shrink-0 grid-cols-3 rounded-lg bg-muted p-1"
+          onValueChange={(value) => {
+            if (!value) {
+              return;
+            }
+            void commitAction({
+              type: "setStatus",
+              status: value as typeof filters.status,
+            });
+          }}
+          size="sm"
+          type="single"
+          value={filters.status}
+          variant="default"
         >
-          <StatusButton
-            active={filters.status === "all"}
-            label="全部"
-            onClick={() =>
-              void commitAction({ type: "setStatus", status: "all" })
-            }
-          />
-          <StatusButton
-            active={filters.status === "changed"}
-            label="已修改"
-            onClick={() =>
-              void commitAction({ type: "setStatus", status: "changed" })
-            }
-          />
-          <StatusButton
-            active={filters.status === "empty"}
-            label="只看空译文"
-            onClick={() =>
-              void commitAction({ type: "setStatus", status: "empty" })
-            }
-          />
-        </ButtonGroup>
-        <Label className="h-10 shrink-0 cursor-pointer rounded-lg border border-slate-300 px-3 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50">
+          <ToggleGroupItem
+            className="grid rounded-md text-xs font-medium data-[state=on]:bg-background data-[state=on]:text-primary data-[state=on]:shadow-sm"
+            value="all"
+          >
+            全部
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            className="grid rounded-md text-xs font-medium data-[state=on]:bg-background data-[state=on]:text-primary data-[state=on]:shadow-sm"
+            value="changed"
+          >
+            已修改
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            className="grid rounded-md text-xs font-medium data-[state=on]:bg-background data-[state=on]:text-primary data-[state=on]:shadow-sm"
+            value="empty"
+          >
+            只看空译文
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <Label className="h-9 shrink-0 cursor-pointer rounded-lg border border-input px-3 text-sm font-normal text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
           <Checkbox
             checked={filters.duplicateOnly}
             onCheckedChange={(checked) =>
@@ -619,10 +646,15 @@ export function ProjectWorkspace({
         <ResizablePanelGroup className="min-h-0" orientation="horizontal">
           <ResizablePanel defaultSize="50" id="translation-list" minSize="35%">
             <div className="flex h-full min-w-0 flex-col">
-              <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-3 text-xs text-slate-500">
-                <span>{result.total.toLocaleString()} 条结果</span>
+              <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-border bg-muted/40 px-3 text-xs text-muted-foreground">
+                <span>
+                  <strong className="font-medium text-foreground">
+                    {result.total.toLocaleString()}
+                  </strong>{" "}
+                  条结果
+                </span>
                 <Button
-                  className="h-8 gap-1.5 px-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  className="h-7 gap-1.5 px-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                   onClick={() => void commitAction({ type: "clearFilters" })}
                   size="sm"
                   type="button"
@@ -661,54 +693,8 @@ export function ProjectWorkspace({
               className="flex h-full min-h-0 flex-col bg-slate-50"
               data-testid="workspace-detail-panel"
             >
-              <div className="flex h-12 shrink-0 items-center border-b border-slate-200 bg-white px-3">
-                <ButtonGroup
-                  aria-label="工作模式"
-                  className="grid w-full grid-cols-2 rounded-md bg-slate-100 p-1"
-                >
-                  <Button
-                    aria-pressed={panelMode === "edit"}
-                    className={
-                      panelMode === "edit"
-                        ? "bg-white text-slate-950 shadow-sm hover:bg-white"
-                        : "text-slate-500 hover:bg-white/70 hover:text-slate-900"
-                    }
-                    onClick={() => setPanelMode("edit")}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <PencilLine />
-                    编辑
-                  </Button>
-                  <Button
-                    aria-pressed={panelMode === "ai"}
-                    className={
-                      panelMode === "ai"
-                        ? "bg-white text-slate-950 shadow-sm hover:bg-white"
-                        : "text-slate-500 hover:bg-white/70 hover:text-slate-900"
-                    }
-                    onClick={() => setPanelMode("ai")}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Sparkles />
-                    AI 模式
-                  </Button>
-                </ButtonGroup>
-              </div>
               <div className="min-h-0 flex-1 [&>aside]:h-full [&>aside]:border-l-0">
-                {panelMode === "ai" ? (
-                  <AiModePanel
-                    api={api}
-                    onApplied={() =>
-                      setDataRefreshNonce((current) => current + 1)
-                    }
-                    projectId={project.id}
-                    targetLanguages={project.targetLanguages}
-                  />
-                ) : selectedRow ? (
+                {selectedRow ? (
                   <TranslationEditor
                     canNext={canNext}
                     canPrevious={canPrevious}
@@ -736,34 +722,45 @@ export function ProjectWorkspace({
           </ResizablePanel>
         </ResizablePanelGroup>
       </section>
-    </main>
-  );
-}
 
-function StatusButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      aria-label={label}
-      aria-pressed={active}
-      className={
-        active
-          ? "bg-white text-xs font-medium text-blue-700 shadow-sm hover:bg-white"
-          : "text-xs font-medium text-slate-500 hover:bg-white/70 hover:text-slate-900"
-      }
-      onClick={onClick}
-      size="sm"
-      type="button"
-      variant="ghost"
-    >
-      {label}
-    </Button>
+      <Drawer
+        direction="right"
+        onOpenChange={setAiDrawerOpen}
+        open={aiDrawerOpen}
+      >
+        <DrawerContent className="w-[min(720px,60vw)] gap-0 sm:max-w-[720px]">
+          <DrawerHeader className="flex h-14 shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-0 text-left">
+            <div className="min-w-0">
+              <DrawerTitle className="text-sm font-semibold text-slate-900">
+                AI 助手
+              </DrawerTitle>
+              <DrawerDescription className="truncate text-xs text-slate-500">
+                {project.name}
+              </DrawerDescription>
+            </div>
+            <DrawerClose asChild>
+              <Button
+                aria-label="关闭 AI 助手"
+                className="size-8 shrink-0 text-slate-500"
+                size="icon"
+                title="关闭 AI 助手"
+                type="button"
+                variant="ghost"
+              >
+                <X size={16} />
+              </Button>
+            </DrawerClose>
+          </DrawerHeader>
+          <div className="min-h-0 flex-1">
+            <AiModePanel
+              api={api}
+              onApplied={() => setDataRefreshNonce((current) => current + 1)}
+              projectId={project.id}
+              targetLanguages={project.targetLanguages}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
+    </main>
   );
 }

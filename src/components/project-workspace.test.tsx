@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   ExportProgress,
@@ -78,9 +85,10 @@ function applyUpdate(
   row: TranslationUnitRow,
   update: TranslationTextUpdate | string,
 ): TranslationUnitRow {
-  const next = typeof update === "string"
-    ? { sourceText: row.sourceText, targetText: update }
-    : update;
+  const next =
+    typeof update === "string"
+      ? { sourceText: row.sourceText, targetText: update }
+      : update;
   return {
     ...row,
     ...next,
@@ -97,10 +105,12 @@ function createApi(): TmxDesktopApi {
     renameProject: vi.fn(),
     deleteProject: vi.fn(async () => undefined),
     queryProject: vi.fn(async (query) => resultFor(query)),
-    updateTranslation: vi.fn(async (_projectId, rowId, update) => applyUpdate(
-      ROWS.find((row) => row.rowId === rowId)!,
-      update,
-    )),
+    updateTranslation: vi.fn(async (_projectId, rowId, update) =>
+      applyUpdate(
+        ROWS.find((row) => row.rowId === rowId)!,
+        update,
+      ),
+    ),
     getTranslationHistory: vi.fn(async () => []),
     copyText: vi.fn(async () => undefined),
     exportProject: vi.fn(async () => "/tmp/export.xlsx"),
@@ -131,19 +141,19 @@ function createRow(position: number): TranslationUnitRow {
 function createPagedApi(): TmxDesktopApi {
   const api = createApi();
   vi.mocked(api.queryProject).mockImplementation(async (query) => ({
-    rows: query.page === 1
-      ? [createRow(1), createRow(2)]
-      : [createRow(3), createRow(4)],
+    rows:
+      query.page === 1
+        ? [createRow(1), createRow(2)]
+        : [createRow(3), createRow(4)],
     total: 4,
     page: query.page,
     pageSize: query.pageSize,
     pageCount: 2,
   }));
-  vi.mocked(api.updateTranslation).mockImplementation(async (
-    _projectId,
-    rowId,
-    update,
-  ) => applyUpdate(createRow(Number(rowId.replace("row-", ""))), update));
+  vi.mocked(api.updateTranslation).mockImplementation(
+    async (_projectId, rowId, update) =>
+      applyUpdate(createRow(Number(rowId.replace("row-", ""))), update),
+  );
   return api;
 }
 
@@ -196,14 +206,18 @@ describe("ProjectWorkspace filtering and pagination", () => {
     );
     await screen.findByRole("textbox", { name: "目标文本" });
 
-    expect(container.querySelector('[data-slot="resizable-panel-group"]'))
-      .toHaveAttribute("data-panel-group-direction", "horizontal");
-    expect(container.querySelectorAll('[data-slot="resizable-panel"]'))
-      .toHaveLength(2);
-    expect(container.querySelectorAll('[data-default-size="50"]'))
-      .toHaveLength(2);
-    expect(screen.getByRole("separator", { name: "调整工作区宽度" }))
-      .toBeInTheDocument();
+    expect(
+      container.querySelector('[data-slot="resizable-panel-group"]'),
+    ).toHaveAttribute("data-panel-group-direction", "horizontal");
+    expect(
+      container.querySelectorAll('[data-slot="resizable-panel"]'),
+    ).toHaveLength(2);
+    expect(container.querySelectorAll('[data-default-size="50"]')).toHaveLength(
+      2,
+    );
+    expect(
+      screen.getByRole("separator", { name: "调整工作区宽度" }),
+    ).toBeInTheDocument();
   });
 
   it("uses shadcn controls for language and the stable workspace mode switch", async () => {
@@ -213,20 +227,28 @@ describe("ProjectWorkspace filtering and pagination", () => {
     );
     await screen.findByRole("textbox", { name: "目标文本" });
 
-    expect(screen.getByRole("combobox", { name: "目标语言" }))
-      .toHaveAttribute("data-slot", "select-trigger");
-    const modeSwitch = screen.getByRole("group", { name: "工作模式" });
-    expect(modeSwitch).toHaveAttribute("data-slot", "button-group");
-    expect(within(modeSwitch).getByRole("button", { name: "编辑" }))
-      .toHaveAttribute("aria-pressed", "true");
-    expect(within(modeSwitch).getByRole("button", { name: "编辑" }))
-      .toHaveAttribute("data-variant", "ghost");
-    expect(within(modeSwitch).getByRole("button", { name: "AI 模式" }))
-      .toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "搜索" }))
-      .toHaveAttribute("data-variant", "ghost");
-    expect(container.querySelectorAll('[data-testid="workspace-detail-panel"]'))
-      .toHaveLength(1);
+    expect(screen.getByRole("combobox", { name: "目标语言" })).toHaveAttribute(
+      "data-slot",
+      "select-trigger",
+    );
+    const modeSwitch = screen.getByRole("tablist", { name: "工作模式" });
+    expect(modeSwitch).toHaveAttribute("data-slot", "tabs-list");
+    expect(
+      within(modeSwitch).getByRole("tab", { name: "编辑" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(
+      within(modeSwitch).getByRole("tab", { name: "编辑" }),
+    ).toHaveAttribute("data-slot", "tabs-trigger");
+    expect(
+      within(modeSwitch).getByRole("tab", { name: "AI 模式" }),
+    ).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("button", { name: "搜索" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
+    expect(
+      container.querySelectorAll('[data-testid="workspace-detail-panel"]'),
+    ).toHaveLength(1);
   });
 
   it("keeps the pagination footer at the same fixed height as editor actions", async () => {
@@ -242,19 +264,21 @@ describe("ProjectWorkspace filtering and pagination", () => {
     const api = createApi();
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
 
-    await waitFor(() => expect(api.queryProject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectId: "project-1",
-        page: 1,
-        pageSize: 200,
-        filters: {
-          query: "",
-          targetLanguage: "",
-          status: "all",
-          duplicateOnly: false,
-        },
-      }),
-    ));
+    await waitFor(() =>
+      expect(api.queryProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: "project-1",
+          page: 1,
+          pageSize: 200,
+          filters: {
+            query: "",
+            targetLanguage: "",
+            status: "all",
+            duplicateOnly: false,
+          },
+        }),
+      ),
+    );
   });
 
   it("keeps search text as a draft until Enter or the search button", async () => {
@@ -268,21 +292,25 @@ describe("ProjectWorkspace filtering and pagination", () => {
     expect(api.queryProject).not.toHaveBeenCalled();
 
     fireEvent.keyDown(search, { key: "Enter" });
-    await waitFor(() => expect(api.queryProject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        page: 1,
-        filters: expect.objectContaining({ query: "alarm" }),
-      }),
-    ));
+    await waitFor(() =>
+      expect(api.queryProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          filters: expect.objectContaining({ query: "alarm" }),
+        }),
+      ),
+    );
 
     vi.mocked(api.queryProject).mockClear();
     fireEvent.change(search, { target: { value: "save" } });
     fireEvent.click(screen.getByRole("button", { name: "搜索" }));
-    await waitFor(() => expect(api.queryProject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        filters: expect.objectContaining({ query: "save" }),
-      }),
-    ));
+    await waitFor(() =>
+      expect(api.queryProject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filters: expect.objectContaining({ query: "save" }),
+        }),
+      ),
+    );
   });
 
   it("applies structured filters immediately and resets to page one", async () => {
@@ -291,26 +319,32 @@ describe("ProjectWorkspace filtering and pagination", () => {
     await screen.findByRole("textbox", { name: "目标文本" });
 
     fireEvent.click(screen.getByRole("button", { name: "下一页" }));
-    await waitFor(() => expect(api.queryProject).toHaveBeenLastCalledWith(
-      expect.objectContaining({ page: 2 }),
-    ));
+    await waitFor(() =>
+      expect(api.queryProject).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 }),
+      ),
+    );
 
     fireEvent.click(screen.getByRole("combobox", { name: "目标语言" }));
     fireEvent.click(screen.getByRole("option", { name: "de-DE" }));
-    await waitFor(() => expect(api.queryProject).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        page: 1,
-        filters: expect.objectContaining({ targetLanguage: "de-DE" }),
-      }),
-    ));
+    await waitFor(() =>
+      expect(api.queryProject).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          filters: expect.objectContaining({ targetLanguage: "de-DE" }),
+        }),
+      ),
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: "只看空译文" }));
-    await waitFor(() => expect(api.queryProject).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        page: 1,
-        filters: expect.objectContaining({ status: "empty" }),
-      }),
-    ));
+    fireEvent.click(screen.getByRole("radio", { name: "只看空译文" }));
+    await waitFor(() =>
+      expect(api.queryProject).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          filters: expect.objectContaining({ status: "empty" }),
+        }),
+      ),
+    );
   });
 
   it("clears every filter and requests page one", async () => {
@@ -323,17 +357,19 @@ describe("ProjectWorkspace filtering and pagination", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "仅重复项" }));
 
     fireEvent.click(screen.getByRole("button", { name: "清除筛选" }));
-    await waitFor(() => expect(api.queryProject).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        page: 1,
-        filters: {
-          query: "",
-          targetLanguage: "",
-          status: "all",
-          duplicateOnly: false,
-        },
-      }),
-    ));
+    await waitFor(() =>
+      expect(api.queryProject).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          filters: {
+            query: "",
+            targetLanguage: "",
+            status: "all",
+            duplicateOnly: false,
+          },
+        }),
+      ),
+    );
     expect(search).toHaveValue("");
   });
 });
@@ -346,17 +382,17 @@ describe("ProjectWorkspace editing", () => {
     const target = screen.getByRole("textbox", { name: "目标文本" });
 
     fireEvent.change(source, { target: { value: "编辑后的报警步骤" } });
-    fireEvent.change(target, { target: { value: "Edited reset instructions" } });
+    fireEvent.change(target, {
+      target: { value: "Edited reset instructions" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "立即保存" }));
 
-    await waitFor(() => expect(api.updateTranslation).toHaveBeenCalledWith(
-      "project-1",
-      "row-1",
-      {
+    await waitFor(() =>
+      expect(api.updateTranslation).toHaveBeenCalledWith("project-1", "row-1", {
         sourceText: "编辑后的报警步骤",
         targetText: "Edited reset instructions",
-      },
-    ));
+      }),
+    );
   });
 
   it("routes field copy actions through the desktop API", async () => {
@@ -365,7 +401,9 @@ describe("ProjectWorkspace editing", () => {
     await screen.findByRole("textbox", { name: "源文本" });
 
     fireEvent.click(screen.getByRole("button", { name: "复制源文本" }));
-    await waitFor(() => expect(api.copyText).toHaveBeenCalledWith(ROWS[0].sourceText));
+    await waitFor(() =>
+      expect(api.copyText).toHaveBeenCalledWith(ROWS[0].sourceText),
+    );
   });
 
   it("debounces one-row saves and does not query on each keystroke", async () => {
@@ -380,11 +418,12 @@ describe("ProjectWorkspace editing", () => {
     expect(api.queryProject).toHaveBeenCalledTimes(queryCount);
 
     await act(async () => vi.advanceTimersByTimeAsync(500));
-    await vi.waitFor(() => expect(api.updateTranslation).toHaveBeenCalledWith(
-      "project-1",
-      "row-1",
-      { sourceText: ROWS[0].sourceText, targetText: "Reset alarm now" },
-    ));
+    await vi.waitFor(() =>
+      expect(api.updateTranslation).toHaveBeenCalledWith("project-1", "row-1", {
+        sourceText: ROWS[0].sourceText,
+        targetText: "Reset alarm now",
+      }),
+    );
     expect(api.queryProject).toHaveBeenCalledTimes(queryCount);
   });
 
@@ -393,25 +432,30 @@ describe("ProjectWorkspace editing", () => {
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     const editor = await screen.findByRole("textbox", { name: "目标文本" });
 
-    fireEvent.change(editor, { target: { value: "Unsaved before row change" } });
+    fireEvent.change(editor, {
+      target: { value: "Unsaved before row change" },
+    });
     fireEvent.click(screen.getByRole("row", { name: "选择 save-1" }));
-    await waitFor(() => expect(api.updateTranslation).toHaveBeenCalledWith(
-      "project-1",
-      "row-1",
-      { sourceText: ROWS[0].sourceText, targetText: "Unsaved before row change" },
-    ));
-    expect(screen.getByRole("textbox", { name: "目标文本" }))
-      .toHaveValue("Einstellungen speichern");
+    await waitFor(() =>
+      expect(api.updateTranslation).toHaveBeenCalledWith("project-1", "row-1", {
+        sourceText: ROWS[0].sourceText,
+        targetText: "Unsaved before row change",
+      }),
+    );
+    expect(screen.getByRole("textbox", { name: "目标文本" })).toHaveValue(
+      "Einstellungen speichern",
+    );
 
     fireEvent.change(screen.getByRole("textbox", { name: "目标文本" }), {
       target: { value: "Vor Export speichern" },
     });
     fireEvent.click(screen.getByRole("button", { name: "导出全部" }));
-    await waitFor(() => expect(api.updateTranslation).toHaveBeenCalledWith(
-      "project-1",
-      "row-2",
-      { sourceText: ROWS[1].sourceText, targetText: "Vor Export speichern" },
-    ));
+    await waitFor(() =>
+      expect(api.updateTranslation).toHaveBeenCalledWith("project-1", "row-2", {
+        sourceText: ROWS[1].sourceText,
+        targetText: "Vor Export speichern",
+      }),
+    );
     expect(api.exportProject).toHaveBeenCalledWith("project-1", undefined);
   });
 
@@ -429,21 +473,25 @@ describe("ProjectWorkspace editing", () => {
     expect(closeListener).toBeTypeOf("function");
     await act(async () => closeListener?.());
 
-    await waitFor(() => expect(api.updateTranslation).toHaveBeenCalledWith(
-      "project-1",
-      "row-1",
-      { sourceText: ROWS[0].sourceText, targetText: "Saved before app close" },
-    ));
+    await waitFor(() =>
+      expect(api.updateTranslation).toHaveBeenCalledWith("project-1", "row-1", {
+        sourceText: ROWS[0].sourceText,
+        targetText: "Saved before app close",
+      }),
+    );
     expect(api.confirmAppClose).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(api.updateTranslation).mock.invocationCallOrder[0])
-      .toBeLessThan(vi.mocked(api.confirmAppClose).mock.invocationCallOrder[0]);
+    expect(
+      vi.mocked(api.updateTranslation).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(api.confirmAppClose).mock.invocationCallOrder[0]);
   });
 
   it("does not confirm application close while an export is running", async () => {
     let closeListener: (() => void) | undefined;
     const pendingExport = deferred<string | null>();
     const api = createApi();
-    vi.mocked(api.exportProject).mockImplementation(() => pendingExport.promise);
+    vi.mocked(api.exportProject).mockImplementation(
+      () => pendingExport.promise,
+    );
     vi.mocked(api.onAppCloseRequested).mockImplementation((listener) => {
       closeListener = listener;
       return () => undefined;
@@ -470,21 +518,23 @@ describe("ProjectWorkspace editing", () => {
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     const editor = await screen.findByRole("textbox", { name: "目标文本" });
 
-    fireEvent.click(screen.getByRole("button", { name: "已修改" }));
+    fireEvent.click(screen.getByRole("radio", { name: "已修改" }));
     await waitFor(() => expect(api.queryProject).toHaveBeenCalledTimes(2));
     expect(editor).toBeDisabled();
 
-    pendingQuery.resolve(resultFor({
-      projectId: PROJECT.id,
-      filters: {
-        query: "",
-        targetLanguage: "",
-        status: "changed",
-        duplicateOnly: false,
-      },
-      page: 1,
-      pageSize: 100,
-    }));
+    pendingQuery.resolve(
+      resultFor({
+        projectId: PROJECT.id,
+        filters: {
+          query: "",
+          targetLanguage: "",
+          status: "changed",
+          duplicateOnly: false,
+        },
+        page: 1,
+        pageSize: 100,
+      }),
+    );
     await waitFor(() => expect(editor).toBeEnabled());
   });
 });
@@ -494,17 +544,24 @@ describe("ProjectWorkspace editor navigation", () => {
     const api = createPagedApi();
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
 
-    expect(await screen.findByRole("textbox", { name: "目标文本" }))
-      .toHaveValue("Target 1");
+    expect(
+      await screen.findByRole("textbox", { name: "目标文本" }),
+    ).toHaveValue("Target 1");
     expect(screen.getByRole("button", { name: "上一条" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "下一条" }));
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "目标文本" }))
-      .toHaveValue("Target 2"));
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "目标文本" })).toHaveValue(
+        "Target 2",
+      ),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "上一条" }));
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "目标文本" }))
-      .toHaveValue("Target 1"));
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "目标文本" })).toHaveValue(
+        "Target 1",
+      ),
+    );
   });
 
   it("selects the correct edge row when navigating across pages", async () => {
@@ -516,9 +573,11 @@ describe("ProjectWorkspace editor navigation", () => {
     await screen.findByDisplayValue("Target 2");
     fireEvent.click(screen.getByRole("button", { name: "下一条" }));
 
-    await waitFor(() => expect(api.queryProject).toHaveBeenLastCalledWith(
-      expect.objectContaining({ page: 2 }),
-    ));
+    await waitFor(() =>
+      expect(api.queryProject).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 }),
+      ),
+    );
     expect(await screen.findByDisplayValue("Target 3")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "上一条" }));
@@ -548,9 +607,10 @@ describe("ProjectWorkspace editor navigation", () => {
         throw new Error("page load failed");
       }
       return {
-        rows: query.page === 1
-          ? [createRow(1), createRow(2)]
-          : [createRow(3), createRow(4)],
+        rows:
+          query.page === 1
+            ? [createRow(1), createRow(2)]
+            : [createRow(3), createRow(4)],
         total: 4,
         page: query.page,
         pageSize: query.pageSize,
@@ -564,9 +624,12 @@ describe("ProjectWorkspace editor navigation", () => {
     await screen.findByDisplayValue("Target 2");
     fireEvent.click(screen.getByRole("button", { name: "下一条" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("page load failed");
-    await waitFor(() => expect(screen.getByRole("button", { name: "下一条" }))
-      .toBeEnabled());
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "page load failed",
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "下一条" })).toBeEnabled(),
+    );
     expect(screen.getByDisplayValue("Target 2")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "下一条" }));
@@ -581,22 +644,25 @@ describe("ProjectWorkspace history", () => {
     return screen.getByRole("dialog", { name: "修改记录" });
   }
 
-  it("renders translation history in a shadcn sheet", async () => {
+  it("renders translation history in a shadcn drawer", async () => {
     const api = createApi();
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
 
     await openHistoryDrawer();
 
-    expect(document.querySelector('[data-slot="sheet-content"]')).not.toBeNull();
+    expect(
+      document.querySelector('[data-slot="drawer-content"]'),
+    ).not.toBeNull();
   });
 
   it("ignores a stale history response after selecting another row", async () => {
     const api = createApi();
     const rowOneHistory = deferred<TranslationHistoryEntry[]>();
     const rowTwoHistory = deferred<TranslationHistoryEntry[]>();
-    vi.mocked(api.getTranslationHistory).mockImplementation((_projectId, rowId) => (
-      rowId === "row-1" ? rowOneHistory.promise : rowTwoHistory.promise
-    ));
+    vi.mocked(api.getTranslationHistory).mockImplementation(
+      (_projectId, rowId) =>
+        rowId === "row-1" ? rowOneHistory.promise : rowTwoHistory.promise,
+    );
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     await screen.findByDisplayValue("Reset the alarm");
 
@@ -618,14 +684,21 @@ describe("ProjectWorkspace history", () => {
       .mockResolvedValueOnce([historyEntry("row-1", 1, "Saved version")]);
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     const editor = await screen.findByDisplayValue("Reset the alarm");
-    await waitFor(() => expect(api.getTranslationHistory).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(api.getTranslationHistory).toHaveBeenCalledTimes(1),
+    );
 
     fireEvent.change(editor, { target: { value: "Saved version" } });
     fireEvent.click(screen.getByRole("button", { name: "立即保存" }));
 
     const drawer = await openHistoryDrawer();
-    expect(await within(drawer).findByText("Saved version")).toBeInTheDocument();
-    expect(api.getTranslationHistory).toHaveBeenLastCalledWith("project-1", "row-1");
+    expect(
+      await within(drawer).findByText("Saved version"),
+    ).toBeInTheDocument();
+    expect(api.getTranslationHistory).toHaveBeenLastCalledWith(
+      "project-1",
+      "row-1",
+    );
   });
 
   it("restores a historical version into the database and current draft", async () => {
@@ -638,15 +711,20 @@ describe("ProjectWorkspace history", () => {
     await within(drawer).findByText("Historical target");
 
     await act(async () => {
-      fireEvent.click(within(drawer).getAllByRole("button", { name: "恢复此版本" })[0]);
+      fireEvent.click(
+        within(drawer).getAllByRole("button", { name: "恢复此版本" })[0],
+      );
       await Promise.resolve();
     });
-    await waitFor(() => expect(api.updateTranslation).toHaveBeenCalledWith(
-      "project-1",
-      "row-1",
-      { sourceText: "Source version 1", targetText: "Historical target" },
-    ));
-    expect(await screen.findByDisplayValue("Historical target")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(api.updateTranslation).toHaveBeenCalledWith("project-1", "row-1", {
+        sourceText: "Source version 1",
+        targetText: "Historical target",
+      }),
+    );
+    expect(
+      await screen.findByDisplayValue("Historical target"),
+    ).toBeInTheDocument();
     expect(api.getTranslationHistory).toHaveBeenCalledTimes(2);
   });
 
@@ -669,12 +747,15 @@ describe("ProjectWorkspace history", () => {
     const drawer = await openHistoryDrawer();
     await within(drawer).findByText("Historical target");
 
-    await waitFor(() => expect(api.updateTranslation).toHaveBeenCalledWith(
-      "project-1",
-      "row-1",
-      { sourceText: ROWS[0].sourceText, targetText: "Unsaved draft" },
-    ));
-    fireEvent.click(within(drawer).getAllByRole("button", { name: "恢复此版本" })[0]);
+    await waitFor(() =>
+      expect(api.updateTranslation).toHaveBeenCalledWith("project-1", "row-1", {
+        sourceText: ROWS[0].sourceText,
+        targetText: "Unsaved draft",
+      }),
+    );
+    fireEvent.click(
+      within(drawer).getAllByRole("button", { name: "恢复此版本" })[0],
+    );
     expect(api.updateTranslation).toHaveBeenCalledTimes(1);
 
     pendingSave.resolve({
@@ -683,12 +764,14 @@ describe("ProjectWorkspace history", () => {
       changed: true,
       updatedAt: "2026-07-14T04:00:00.000Z",
     });
-    await waitFor(() => expect(api.updateTranslation).toHaveBeenNthCalledWith(
-      2,
-      "project-1",
-      "row-1",
-      { sourceText: "Source version 1", targetText: "Historical target" },
-    ));
+    await waitFor(() =>
+      expect(api.updateTranslation).toHaveBeenNthCalledWith(
+        2,
+        "project-1",
+        "row-1",
+        { sourceText: "Source version 1", targetText: "Historical target" },
+      ),
+    );
   });
 
   it("saves every draft typed during an in-flight save before restoring history", async () => {
@@ -708,14 +791,18 @@ describe("ProjectWorkspace history", () => {
     await act(async () => {
       fireEvent.change(editor, { target: { value: "First draft" } });
       fireEvent.blur(editor);
-      await waitForCondition(() => vi.mocked(api.updateTranslation).mock.calls.length === 1);
+      await waitForCondition(
+        () => vi.mocked(api.updateTranslation).mock.calls.length === 1,
+      );
       fireEvent.change(editor, { target: { value: "Latest draft" } });
     });
     const drawer = await openHistoryDrawer();
     await within(drawer).findByText("Historical target");
 
     await act(async () => {
-      fireEvent.click(within(drawer).getAllByRole("button", { name: "恢复此版本" })[0]);
+      fireEvent.click(
+        within(drawer).getAllByRole("button", { name: "恢复此版本" })[0],
+      );
       expect(api.updateTranslation).toHaveBeenNthCalledWith(
         1,
         "project-1",
@@ -729,7 +816,9 @@ describe("ProjectWorkspace history", () => {
         updatedAt: "2026-07-14T04:00:00.000Z",
       });
       await firstSave.promise;
-      await waitForCondition(() => vi.mocked(api.updateTranslation).mock.calls.length === 2);
+      await waitForCondition(
+        () => vi.mocked(api.updateTranslation).mock.calls.length === 2,
+      );
       expect(api.updateTranslation).toHaveBeenNthCalledWith(
         2,
         "project-1",
@@ -744,7 +833,9 @@ describe("ProjectWorkspace history", () => {
         updatedAt: "2026-07-14T05:00:00.000Z",
       });
       await latestSave.promise;
-      await waitForCondition(() => vi.mocked(api.updateTranslation).mock.calls.length === 3);
+      await waitForCondition(
+        () => vi.mocked(api.updateTranslation).mock.calls.length === 3,
+      );
       expect(api.updateTranslation).toHaveBeenNthCalledWith(
         3,
         "project-1",
@@ -771,22 +862,27 @@ describe("ProjectWorkspace history", () => {
     vi.mocked(api.getTranslationHistory).mockResolvedValue([
       historyEntry("row-1", 1, "Historical target"),
     ]);
-    vi.mocked(api.updateTranslation).mockRejectedValueOnce(new Error("disk full"));
+    vi.mocked(api.updateTranslation).mockRejectedValueOnce(
+      new Error("disk full"),
+    );
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     const editor = await screen.findByRole("textbox", { name: "目标文本" });
     fireEvent.change(editor, { target: { value: "Must be saved first" } });
     const drawer = await openHistoryDrawer();
     await within(drawer).findByText("Historical target");
 
-    fireEvent.click(within(drawer).getAllByRole("button", { name: "恢复此版本" })[0]);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("恢复失败，请重试");
-    expect(api.updateTranslation).toHaveBeenCalledTimes(1);
-    expect(api.updateTranslation).toHaveBeenCalledWith(
-      "project-1",
-      "row-1",
-      { sourceText: ROWS[0].sourceText, targetText: "Must be saved first" },
+    fireEvent.click(
+      within(drawer).getAllByRole("button", { name: "恢复此版本" })[0],
     );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "恢复失败，请重试",
+    );
+    expect(api.updateTranslation).toHaveBeenCalledTimes(1);
+    expect(api.updateTranslation).toHaveBeenCalledWith("project-1", "row-1", {
+      sourceText: ROWS[0].sourceText,
+      targetText: "Must be saved first",
+    });
   });
 
   it("lets the editor report a failed history restore", async () => {
@@ -794,14 +890,20 @@ describe("ProjectWorkspace history", () => {
     vi.mocked(api.getTranslationHistory).mockResolvedValue([
       historyEntry("row-1", 1, "Historical target"),
     ]);
-    vi.mocked(api.updateTranslation).mockRejectedValue(new Error("write failed"));
+    vi.mocked(api.updateTranslation).mockRejectedValue(
+      new Error("write failed"),
+    );
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     const drawer = await openHistoryDrawer();
     await within(drawer).findByText("Historical target");
 
-    fireEvent.click(within(drawer).getAllByRole("button", { name: "恢复此版本" })[0]);
+    fireEvent.click(
+      within(drawer).getAllByRole("button", { name: "恢复此版本" })[0],
+    );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("恢复失败，请重试");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "恢复失败，请重试",
+    );
   });
 });
 
@@ -809,7 +911,9 @@ describe("ProjectWorkspace export feedback", () => {
   it("locks translation editing for the whole export operation", async () => {
     const api = createApi();
     const pendingExport = deferred<string | null>();
-    vi.mocked(api.exportProject).mockImplementation(() => pendingExport.promise);
+    vi.mocked(api.exportProject).mockImplementation(
+      () => pendingExport.promise,
+    );
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     const editor = await screen.findByDisplayValue("Reset the alarm");
 
@@ -824,7 +928,9 @@ describe("ProjectWorkspace export feedback", () => {
     const api = createApi();
     const pendingExport = deferred<string | null>();
     let progressListener: ((progress: ExportProgress) => void) | undefined;
-    vi.mocked(api.exportProject).mockImplementation(() => pendingExport.promise);
+    vi.mocked(api.exportProject).mockImplementation(
+      () => pendingExport.promise,
+    );
     vi.mocked(api.onExportProgress).mockImplementation((listener) => {
       progressListener = listener;
       return () => undefined;
@@ -833,15 +939,17 @@ describe("ProjectWorkspace export feedback", () => {
     await screen.findByDisplayValue("Reset the alarm");
     fireEvent.click(screen.getByRole("button", { name: "导出全部" }));
 
-    act(() => progressListener?.({
-      operationId: "export-1",
-      projectId: PROJECT.id,
-      stage: "writing",
-      processed: 42,
-      total: 100,
-      percent: 42,
-      message: "正在导出",
-    }));
+    act(() =>
+      progressListener?.({
+        operationId: "export-1",
+        projectId: PROJECT.id,
+        stage: "writing",
+        processed: 42,
+        total: 100,
+        percent: 42,
+        message: "正在导出",
+      }),
+    );
 
     const progressbar = screen.getByRole("progressbar", { name: "导出进度" });
     expect(progressbar).toHaveAttribute("aria-valuemin", "0");
@@ -855,18 +963,23 @@ describe("ProjectWorkspace export feedback", () => {
 
   it("shows the exported path and opens its folder", async () => {
     const api = createApi();
-    vi.mocked(api.exportProject).mockResolvedValue("/exports/Service Manual-2026-07-14.xlsx");
+    vi.mocked(api.exportProject).mockResolvedValue(
+      "/exports/Service Manual-2026-07-14.xlsx",
+    );
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
     await screen.findByDisplayValue("Reset the alarm");
 
     fireEvent.click(screen.getByRole("button", { name: "导出全部" }));
 
-    expect(await screen.findByRole("status", { name: "导出成功" }))
-      .toHaveTextContent("/exports/Service Manual-2026-07-14.xlsx");
+    expect(
+      await screen.findByRole("status", { name: "导出成功" }),
+    ).toHaveTextContent("/exports/Service Manual-2026-07-14.xlsx");
     fireEvent.click(screen.getByRole("button", { name: "打开文件夹" }));
-    await waitFor(() => expect(api.openExportDirectory).toHaveBeenCalledWith(
-      "/exports/Service Manual-2026-07-14.xlsx",
-    ));
+    await waitFor(() =>
+      expect(api.openExportDirectory).toHaveBeenCalledWith(
+        "/exports/Service Manual-2026-07-14.xlsx",
+      ),
+    );
   });
 
   it("does not show success feedback when export is cancelled", async () => {
@@ -878,6 +991,8 @@ describe("ProjectWorkspace export feedback", () => {
     fireEvent.click(screen.getByRole("button", { name: "导出全部" }));
     await waitFor(() => expect(api.exportProject).toHaveBeenCalled());
 
-    expect(screen.queryByRole("status", { name: "导出成功" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("status", { name: "导出成功" }),
+    ).not.toBeInTheDocument();
   });
 });

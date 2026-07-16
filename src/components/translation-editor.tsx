@@ -31,15 +31,15 @@ import type {
   TranslationUnitRow,
 } from "@/lib/desktop-types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
@@ -675,9 +675,9 @@ export const TranslationEditor = forwardRef<
                   onChange={(event) => updateFindDraft(event.target.value)}
                   onKeyDown={(event) => {
                     if (
-                      event.key === "Enter"
-                      && !event.shiftKey
-                      && !event.nativeEvent.isComposing
+                      event.key === "Enter" &&
+                      !event.shiftKey &&
+                      !event.nativeEvent.isComposing
                     ) {
                       event.preventDefault();
                       submitFind();
@@ -690,9 +690,11 @@ export const TranslationEditor = forwardRef<
                 <Button
                   aria-label="区分大小写"
                   aria-pressed={caseSensitive}
-                  className={caseSensitive
-                    ? "size-8 shrink-0 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    : "size-8 shrink-0 text-slate-600"}
+                  className={
+                    caseSensitive
+                      ? "size-8 shrink-0 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      : "size-8 shrink-0 text-slate-600"
+                  }
                   disabled={interactionLocked}
                   onClick={toggleCaseSensitive}
                   title="区分大小写"
@@ -798,7 +800,9 @@ export const TranslationEditor = forwardRef<
               className="relative z-10 min-h-44 w-full resize-y rounded border border-slate-300 bg-transparent p-3 text-sm leading-6 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
               disabled={interactionLocked}
               onBlur={() => void flush().catch(() => undefined)}
-              onChange={(event) => changeDraft("targetText", event.target.value)}
+              onChange={(event) =>
+                changeDraft("targetText", event.target.value)
+              }
               onScroll={(event) => syncHighlightScroll(event.currentTarget)}
               ref={targetTextareaRef}
               value={targetDraft}
@@ -829,22 +833,32 @@ export const TranslationEditor = forwardRef<
         </div>
       </div>
 
-      <Sheet onOpenChange={setHistoryOpen} open={historyOpen}>
-        <SheetContent
-          className="w-[min(520px,50vw)] gap-0 bg-slate-50 p-0 sm:max-w-[520px]"
+      <Drawer
+        direction="right"
+        onOpenChange={setHistoryOpen}
+        open={historyOpen}
+      >
+        <DrawerContent
+          className="w-[min(520px,50vw)] gap-0 bg-slate-50 sm:max-w-[520px]"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             historyButtonRef.current?.focus();
           }}
-          showCloseButton={false}
-          side="right"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            historyCloseButtonRef.current?.focus();
+          }}
         >
-          <SheetHeader className="flex h-14 shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-0 text-left">
+          <DrawerHeader className="flex h-14 shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-0 text-left">
             <div>
-              <SheetTitle className="text-sm font-semibold text-slate-900">修改记录</SheetTitle>
-              <SheetDescription className="text-xs text-slate-500">{row.id}</SheetDescription>
+              <DrawerTitle className="text-sm font-semibold text-slate-900">
+                修改记录
+              </DrawerTitle>
+              <DrawerDescription className="text-xs text-slate-500">
+                {row.id}
+              </DrawerDescription>
             </div>
-            <SheetClose asChild>
+            <DrawerClose asChild>
               <Button
                 aria-label="关闭修改记录"
                 className="size-8 text-slate-500"
@@ -856,8 +870,8 @@ export const TranslationEditor = forwardRef<
               >
                 <X size={16} />
               </Button>
-            </SheetClose>
-          </SheetHeader>
+            </DrawerClose>
+          </DrawerHeader>
           <div
             className="min-h-0 flex-1 space-y-3 overflow-auto p-4"
             data-testid="translation-history"
@@ -951,8 +965,8 @@ export const TranslationEditor = forwardRef<
               </>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
 
       <div
         aria-hidden={historyOpen || undefined}
@@ -1036,7 +1050,9 @@ function HighlightedText({
             >
               {index === activeMatch ? (
                 <span data-testid="find-highlight-active">{value}</span>
-              ) : value}
+              ) : (
+                value
+              )}
             </mark>
           </Fragment>
         );
@@ -1046,18 +1062,17 @@ function HighlightedText({
   );
 }
 
-function findMatchRanges(
-  text: string,
-  query: string,
-  caseSensitive: boolean,
-) {
+function findMatchRanges(text: string, query: string, caseSensitive: boolean) {
   if (!query) {
     return [];
   }
-  return Array.from(text.matchAll(createLiteralPattern(query, caseSensitive)), (match) => ({
-    start: match.index,
-    end: match.index + match[0].length,
-  }));
+  return Array.from(
+    text.matchAll(createLiteralPattern(query, caseSensitive)),
+    (match) => ({
+      start: match.index,
+      end: match.index + match[0].length,
+    }),
+  );
 }
 
 function replaceLiteralAll(
@@ -1195,7 +1210,9 @@ function TooltipIconButton({
             variant="ghost"
           >
             {children}
-            <span className="sr-only">{label} {shortcut}</span>
+            <span className="sr-only">
+              {label} {shortcut}
+            </span>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="top">

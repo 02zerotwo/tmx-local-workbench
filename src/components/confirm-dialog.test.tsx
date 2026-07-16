@@ -18,7 +18,9 @@ describe("ConfirmDialog", () => {
       />,
     );
 
-    expect(document.querySelector('[data-slot="alert-dialog-content"]')).not.toBeNull();
+    expect(
+      document.querySelector('[data-slot="dialog-content"]'),
+    ).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "删除" }));
     expect(onConfirm).toHaveBeenCalledOnce();
   });
