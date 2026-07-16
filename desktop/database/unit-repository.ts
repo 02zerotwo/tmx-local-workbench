@@ -73,7 +73,6 @@ type DerivedState = {
 };
 
 type QueryParts = {
-  joinSql: string;
   whereSql: string;
   values: Array<string | number>;
 };
@@ -166,10 +165,6 @@ function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, "\\$&");
 }
 
-function toFtsPhrase(value: string): string {
-  return `"${value.replaceAll('"', '""')}"`;
-}
-
 function validatePageSize(pageSize: ProjectPageSize): ProjectPageSize {
   if (!(PROJECT_PAGE_SIZES as readonly number[]).includes(pageSize)) {
     throw new Error(`Unsupported page size: ${pageSize}`);
@@ -198,7 +193,6 @@ function buildQueryParts(query: ProjectQuery): QueryParts {
   const conditions = ["u.project_id = ?"];
   const values: Array<string | number> = [query.projectId];
   const { filters } = query;
-  let joinSql = "";
 
   if (!FILTER_STATUSES.includes(filters.status)) {
     throw new Error(`Unsupported translation status: ${filters.status}`);
@@ -219,28 +213,21 @@ function buildQueryParts(query: ProjectQuery): QueryParts {
     conditions.push("u.duplicate_key IS NOT NULL");
   }
 
+  // 普通搜索一律走 LIKE 模糊匹配，跨 external_id / 原文 / 译文 / 元数据。
+  // 用户输入中的 \ % _ 会被转义，避免通配符污染查询。
   const searchText = filters.query.trim();
   if (searchText) {
     const likePattern = `%${escapeLike(searchText)}%`;
-    const exactSearchSql = `(
+    conditions.push(`(
       u.external_id LIKE ? ESCAPE '\\'
       OR u.source_text LIKE ? ESCAPE '\\'
       OR u.target_text LIKE ? ESCAPE '\\'
       OR u.metadata_json LIKE ? ESCAPE '\\'
-    )`;
-
-    if (Array.from(searchText).length >= 3) {
-      joinSql = "JOIN translation_search ON translation_search.rowid = u.unit_pk";
-      conditions.push("translation_search MATCH ?");
-      values.push(toFtsPhrase(searchText));
-    }
-
-    conditions.push(exactSearchSql);
+    )`);
     values.push(likePattern, likePattern, likePattern, likePattern);
   }
 
   return {
-    joinSql,
     whereSql: conditions.join(" AND "),
     values,
   };
@@ -486,11 +473,10 @@ export class UnitRepository {
   queryProject(query: ProjectQuery): ProjectQueryResult {
     this.requireReadyProject(query.projectId, "accessed");
     const pageSize = validatePageSize(query.pageSize);
-    const { joinSql, whereSql, values } = buildQueryParts(query);
+    const { whereSql, values } = buildQueryParts(query);
     const countSql = `
       SELECT COUNT(*) AS total
       FROM translation_units u
-      ${joinSql}
       WHERE ${whereSql}
     `;
     const countRow = this.prepareCached(
@@ -504,7 +490,6 @@ export class UnitRepository {
     const pageSql = `
       SELECT u.*
       FROM translation_units u
-      ${joinSql}
       WHERE ${whereSql}
       ORDER BY u.ordinal ASC, u.row_id ASC
       LIMIT ? OFFSET ?

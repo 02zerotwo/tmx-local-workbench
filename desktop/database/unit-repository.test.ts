@@ -472,7 +472,7 @@ describe("UnitRepository filtering and exact search", () => {
     }).total).toBe(0);
   });
 
-  it("uses trigram FTS for exact Chinese, English, and metadata substrings", () => {
+  it("matches Chinese, English, and metadata substrings with fuzzy LIKE", () => {
     expect(query(
       harness.repository,
       harness.projectId,
@@ -519,7 +519,7 @@ describe("UnitRepository filtering and exact search", () => {
     ).rows.map(({ rowId }) => rowId)).toEqual(["row-literal-like"]);
   });
 
-  it("treats FTS operators and SQL-injection-shaped input as literal text", () => {
+  it("treats special-character and SQL-injection-shaped input as literal text", () => {
     expect(() => query(harness.repository, harness.projectId, {
       query: "alarm\" OR calibration",
     })).not.toThrow();
@@ -535,7 +535,7 @@ describe("UnitRepository filtering and exact search", () => {
     }).total).toBe(0);
   });
 
-  it("uses one non-correlated FTS rowid join for long-query count and page SQL", () => {
+  it("uses plain LIKE without any FTS join for long-query count and page SQL", () => {
     const statements: string[] = [];
     const db = new Database(":memory:", {
       verbose: (statement) => statements.push(String(statement).trim()),
@@ -572,23 +572,20 @@ describe("UnitRepository filtering and exact search", () => {
         targetLanguage: "en-US",
       }).rows.map(({ rowId }) => rowId)).toEqual(["search-plan-row"]);
 
+      // better-sqlite3's verbose logger inlines bound parameters, so the LIKE
+      // search shows up as `LIKE '%...%' ESCAPE '\'` rather than `LIKE ?`.
       const searchStatements = statements.filter((statement) => (
         /FROM translation_units u/i.test(statement)
-        && /translation_search MATCH/i.test(statement)
+        && /LIKE '[^']*' ESCAPE/i.test(statement)
       ));
       expect(searchStatements).toHaveLength(2);
       for (const statement of searchStatements) {
-        expect(statement).not.toMatch(/\bEXISTS\b/i);
-        expect(statement).toMatch(
-          /JOIN translation_search ON translation_search\.rowid = u\.unit_pk/i,
-        );
+        expect(statement).not.toMatch(/translation_search/i);
+        expect(statement).not.toMatch(/\bMATCH\b/i);
         const plan = db.prepare(`EXPLAIN QUERY PLAN ${statement}`).all() as Array<{
           detail: string;
         }>;
-        expect(plan.some(({ detail }) => /CORRELATED/i.test(detail))).toBe(false);
-        expect(plan.filter(({ detail }) => (
-          /translation_search/i.test(detail) && /VIRTUAL TABLE/i.test(detail)
-        ))).toHaveLength(1);
+        expect(plan.some(({ detail }) => /VIRTUAL TABLE/i.test(detail))).toBe(false);
       }
     } finally {
       db.close();
