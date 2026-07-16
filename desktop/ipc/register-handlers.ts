@@ -60,7 +60,13 @@ export type DesktopHandlerDependencies = {
   unitRepository: UnitRepository;
   aiSettingsService?: Pick<
     DeepSeekSettingsService,
-    "getStatus" | "saveAndVerifyKey" | "verifyConnection" | "deleteKey" | "getModel"
+    | "getStatus"
+    | "saveAndVerifyKey"
+    | "verifyConnection"
+    | "deleteKey"
+    | "getModel"
+    | "getAuditDefaults"
+    | "saveAuditDefaults"
   >;
   aiAgentService?: Pick<
     TranslationAgentService,
@@ -153,14 +159,6 @@ function parseProjectQuery(value: unknown): ProjectQuery {
 
 function parseAuditBoundaries(value: unknown): AuditBoundaries {
   const boundaries = plainRecord(value, "审查边界");
-  const categories = boundaries.categories;
-  if (
-    !Array.isArray(categories)
-    || categories.length === 0
-    || !categories.every((category) => typeof category === "string" && category.trim())
-  ) {
-    throw new Error("审查类别参数无效");
-  }
   const minConfidence = Number(boundaries.minConfidence);
   if (!Number.isFinite(minConfidence) || minConfidence < 0 || minConfidence > 1) {
     throw new Error("审查置信度参数无效");
@@ -168,10 +166,22 @@ function parseAuditBoundaries(value: unknown): AuditBoundaries {
   if (typeof boundaries.allowRewrite !== "boolean") {
     throw new Error("自动纠正边界参数无效");
   }
+  if (boundaries.customRules !== undefined && typeof boundaries.customRules !== "string") {
+    throw new Error("审查规则参数无效");
+  }
+  const customRules = (boundaries.customRules as string | undefined) ?? "";
+  if (customRules.length > 4000) {
+    throw new Error("审查规则过长");
+  }
+  const concurrency = Number(boundaries.concurrency);
+  if (!Number.isFinite(concurrency) || concurrency < 1 || concurrency > 20) {
+    throw new Error("并发数必须为 1–20");
+  }
   return {
-    categories: [...new Set(categories.map((category) => category.trim()))],
+    customRules,
     minConfidence,
     allowRewrite: boundaries.allowRewrite,
+    concurrency: Math.trunc(concurrency),
   };
 }
 
@@ -518,6 +528,16 @@ export function registerDesktopHandlers(
     requireTrustedAuditSender(dependencies, event);
     return dependencies.aiAuditService!.acceptAllPendingFindings(
       requiredString(jobId, "审查任务 ID"),
+    );
+  });
+  register(dependencies, requests.getAiAuditDefaults, (event) => {
+    requireTrustedAiSender(dependencies, event);
+    return dependencies.aiSettingsService!.getAuditDefaults();
+  });
+  register(dependencies, requests.saveAiAuditDefaults, (event, defaults) => {
+    requireTrustedAiSender(dependencies, event);
+    return dependencies.aiSettingsService!.saveAuditDefaults(
+      parseAuditBoundaries(defaults),
     );
   });
   register(dependencies, requests.listAiAgentRevisions, (event, sessionId) => {

@@ -3,10 +3,29 @@ import { randomUUID } from "node:crypto";
 import type { ProjectFilters } from "../../src/lib/desktop-types";
 
 export type AuditBoundaries = {
-  categories: string[];
+  customRules: string;
   minConfidence: number;
   allowRewrite: boolean;
+  concurrency: number;
 };
+
+export const DEFAULT_AUDIT_CONCURRENCY = 8;
+export const MAX_AUDIT_CONCURRENCY = 20;
+
+/** 兼容旧任务的 boundaries_json（可能缺少 customRules / concurrency）。 */
+export function normalizeBoundaries(raw: unknown): AuditBoundaries {
+  const value =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const concurrency =
+    typeof value.concurrency === "number" ? value.concurrency : DEFAULT_AUDIT_CONCURRENCY;
+  return {
+    customRules: typeof value.customRules === "string" ? value.customRules : "",
+    minConfidence:
+      typeof value.minConfidence === "number" ? value.minConfidence : 0.8,
+    allowRewrite: value.allowRewrite !== false,
+    concurrency: Math.min(MAX_AUDIT_CONCURRENCY, Math.max(1, Math.trunc(concurrency))),
+  };
+}
 
 export type AuditJobStatus =
   | "draft"
@@ -162,7 +181,7 @@ function mapJob(row: JobRow): AuditJob {
     projectId: row.project_id,
     sessionId: row.session_id,
     filters: JSON.parse(row.filters_json) as ProjectFilters,
-    boundaries: JSON.parse(row.boundaries_json) as AuditBoundaries,
+    boundaries: normalizeBoundaries(JSON.parse(row.boundaries_json)),
     model: row.model,
     status: row.status,
     totalItems: row.total_items,
@@ -294,12 +313,20 @@ export class AiAuditRepository {
 
   recoverInterruptedJobs(): number {
     const now = this.now().toISOString();
-    const result = this.db.prepare(`
-      UPDATE ai_audit_jobs
-      SET status = 'paused', updated_at = ?
-      WHERE status = 'running'
-    `).run(now);
-    return result.changes;
+    return this.db.transaction(() => {
+      // 中断时可能有条目卡在 running：重置回 pending 以便续跑。
+      this.db.prepare(`
+        UPDATE ai_audit_items
+        SET status = 'pending', started_at = NULL, updated_at = ?
+        WHERE status = 'running'
+      `).run(now);
+      const result = this.db.prepare(`
+        UPDATE ai_audit_jobs
+        SET status = 'paused', updated_at = ?
+        WHERE status = 'running'
+      `).run(now);
+      return result.changes;
+    })();
   }
 
   getNextPendingItem(jobId: string): AuditQueueItem | null {
@@ -313,6 +340,39 @@ export class AiAuditRepository {
       LIMIT 1
     `).get(jobId) as QueueRow | undefined;
     return row ? mapQueueItem(row) : null;
+  }
+
+  /** 原子领取至多 limit 条待处理项并标记为 running，供并发消费，避免重复处理。 */
+  claimNextPendingItems(jobId: string, limit: number): AuditQueueItem[] {
+    if (limit <= 0) return [];
+    const now = this.now().toISOString();
+    return this.db.transaction(() => {
+      const pending = this.db.prepare(`
+        SELECT id FROM ai_audit_items
+        WHERE job_id = ? AND status = 'pending'
+        ORDER BY queue_ordinal ASC
+        LIMIT ?
+      `).all(jobId, limit) as Array<{ id: string }>;
+      if (pending.length === 0) return [];
+      const mark = this.db.prepare(`
+        UPDATE ai_audit_items
+        SET status = 'running', started_at = COALESCE(started_at, ?), updated_at = ?
+        WHERE id = ? AND status = 'pending'
+      `);
+      for (const { id } of pending) {
+        mark.run(now, now, id);
+      }
+      const placeholders = pending.map(() => "?").join(", ");
+      const rows = this.db.prepare(`
+        SELECT i.*, u.source_lang, u.source_text, u.target_lang, u.target_text
+        FROM ai_audit_items i
+        JOIN translation_units u
+          ON u.project_id = i.project_id AND u.row_id = i.row_id
+        WHERE i.id IN (${placeholders})
+        ORDER BY i.queue_ordinal ASC
+      `).all(...pending.map(({ id }) => id)) as QueueRow[];
+      return rows.map(mapQueueItem);
+    })();
   }
 
   setJobStatus(jobId: string, status: AuditJobStatus): AuditJob {

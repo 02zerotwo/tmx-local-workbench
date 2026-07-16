@@ -44,9 +44,10 @@ describe("AiAuditRepository", () => {
       projectId: project.id,
       filters: { query: "", targetLanguage: "", status: "all", duplicateOnly: false },
       boundaries: {
-        categories: ["accuracy", "terminology"],
+        customRules: "统一术语",
         minConfidence: 0.8,
         allowRewrite: true,
+        concurrency: 8,
       },
       model: "deepseek-v4-flash",
       rows: [{ rowId: "row-1", contentHash: "hash-1" }],

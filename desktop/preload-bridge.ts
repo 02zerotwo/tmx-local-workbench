@@ -162,6 +162,13 @@ export function createDesktopApi(ipcRenderer: IpcRendererBridge): TmxDesktopApi 
       IPC_CHANNELS.requests.applyAiAudit,
       jobId,
     ) as ReturnType<TmxDesktopApi["applyAiAudit"]>,
+    getAiAuditDefaults: () => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.getAiAuditDefaults,
+    ) as ReturnType<TmxDesktopApi["getAiAuditDefaults"]>,
+    saveAiAuditDefaults: (defaults) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.saveAiAuditDefaults,
+      defaults,
+    ) as ReturnType<TmxDesktopApi["saveAiAuditDefaults"]>,
     listAiAgentRevisions: (sessionId) => ipcRenderer.invoke(
       IPC_CHANNELS.requests.listAiAgentRevisions,
       sessionId,

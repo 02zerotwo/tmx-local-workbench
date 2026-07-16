@@ -57,9 +57,10 @@ describe("AuditWorkflowService", () => {
       projectId: project.id,
       filters: { query: "", targetLanguage: "", status: "all", duplicateOnly: false },
       boundaries: {
-        categories: ["fluency"],
+        customRules: "",
         minConfidence: 0.8,
         allowRewrite: true,
+        concurrency: 1,
       },
       model: "deepseek-v4-flash",
     });
@@ -113,7 +114,7 @@ describe("AuditWorkflowService", () => {
     const job = workflow.createJob({
       projectId: project.id,
       filters: { query: "", targetLanguage: "", status: "all", duplicateOnly: false },
-      boundaries: { categories: ["accuracy"], minConfidence: 0.8, allowRewrite: true },
+      boundaries: { customRules: "", minConfidence: 0.8, allowRewrite: true, concurrency: 1 },
       model: "deepseek-v4-flash",
     });
     const events: string[] = [];
@@ -129,5 +130,62 @@ describe("AuditWorkflowService", () => {
     finishAnalysis([]);
     await running;
     expect(events).toContain("running");
+  });
+
+  it("processes items concurrently up to the limit without double-claiming", async () => {
+    const testDatabase = createTestDatabase();
+    databases.push(testDatabase);
+    const project = new ProjectRepository(testDatabase.db).createProject({
+      name: "Concurrency project",
+      sourceFileName: "concurrency.tmx",
+      sourceLanguage: "zh-CN",
+      targetLanguages: ["en-US"],
+      fileSize: 100,
+      importStatus: "ready",
+    });
+    const units = new UnitRepository(testDatabase.db);
+    units.insertUnits(project.id, Array.from({ length: 10 }, (_, index) => ({
+      rowId: `row-${index}`,
+      id: `unit-${index}`,
+      position: index + 1,
+      sourceLang: "zh-CN",
+      sourceText: `源文 ${index}`,
+      targetLang: "en-US",
+      targetText: `Target ${index}`,
+      originalTargetText: `Target ${index}`,
+    })));
+    const repository = new AiAuditRepository(testDatabase.db);
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const seen: string[] = [];
+    const analyzeItem = vi.fn().mockImplementation(async (input: { sourceText: string }) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      seen.push(input.sourceText);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight -= 1;
+      return [];
+    });
+    const workflow = new AuditWorkflowService({
+      repository,
+      unitRepository: units,
+      analyzeItem,
+      transaction: (operation) => testDatabase.db.transaction(operation)(),
+    });
+    const job = workflow.createJob({
+      projectId: project.id,
+      filters: { query: "", targetLanguage: "", status: "all", duplicateOnly: false },
+      boundaries: { customRules: "", minConfidence: 0.8, allowRewrite: true, concurrency: 4 },
+      model: "deepseek-v4-flash",
+    });
+
+    await workflow.runJob(job.id, () => undefined);
+
+    expect(analyzeItem).toHaveBeenCalledTimes(10);
+    expect(new Set(seen).size).toBe(10);
+    expect(maxInFlight).toBeGreaterThan(1);
+    expect(maxInFlight).toBeLessThanOrEqual(4);
+    expect(repository.getJob(job.id)?.status).toBe("complete");
+    expect(repository.getJob(job.id)?.completedItems).toBe(10);
   });
 });

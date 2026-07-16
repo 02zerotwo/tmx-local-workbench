@@ -42,6 +42,10 @@ describe("AiModePanel", () => {
       decideAiAuditFinding: vi.fn(),
       acceptAllAiAuditFindings: vi.fn(),
       applyAiAudit: vi.fn(),
+      getAiAuditDefaults: vi.fn().mockResolvedValue({
+        customRules: "", minConfidence: 0.8, allowRewrite: true, concurrency: 8,
+      }),
+      saveAiAuditDefaults: vi.fn(),
       onAiAuditEvent: vi.fn().mockReturnValue(() => undefined),
     } as Pick<
       TmxDesktopApi,
@@ -68,6 +72,8 @@ describe("AiModePanel", () => {
       | "decideAiAuditFinding"
       | "acceptAllAiAuditFindings"
       | "applyAiAudit"
+      | "getAiAuditDefaults"
+      | "saveAiAuditDefaults"
       | "onAiAuditEvent"
     >;
 
@@ -128,6 +134,10 @@ describe("AiModePanel", () => {
       decideAiAuditFinding: vi.fn(),
       acceptAllAiAuditFindings: vi.fn(),
       applyAiAudit: vi.fn(),
+      getAiAuditDefaults: vi.fn().mockResolvedValue({
+        customRules: "", minConfidence: 0.8, allowRewrite: true, concurrency: 8,
+      }),
+      saveAiAuditDefaults: vi.fn(),
       onAiAuditEvent: vi.fn().mockReturnValue(() => undefined),
     } as Pick<TmxDesktopApi,
       | "getAiSettings" | "saveDeepSeekKey" | "verifyDeepSeekConnection"
@@ -137,7 +147,8 @@ describe("AiModePanel", () => {
       | "listAiAgentRevisions" | "applyAiAgentRevisions" | "ignoreAiAgentRevision"
       | "listAiAuditJobs" | "startAiAudit" | "pauseAiAudit"
       | "resumeAiAudit" | "listAiAuditFindings" | "decideAiAuditFinding"
-      | "acceptAllAiAuditFindings" | "applyAiAudit" | "onAiAuditEvent"
+      | "acceptAllAiAuditFindings" | "applyAiAudit"
+      | "getAiAuditDefaults" | "saveAiAuditDefaults" | "onAiAuditEvent"
     >;
 
     render(

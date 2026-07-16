@@ -42,6 +42,8 @@ const METHOD_NAMES = [
   "decideAiAuditFinding",
   "acceptAllAiAuditFindings",
   "applyAiAudit",
+  "getAiAuditDefaults",
+  "saveAiAuditDefaults",
   "listAiAgentRevisions",
   "applyAiAgentRevisions",
   "ignoreAiAgentRevision",
@@ -105,9 +107,10 @@ describe("desktop IPC contract", () => {
     await api.retryAiMessage("session-1", "main");
     await api.listAiAuditJobs("project-1");
     await api.startAiAudit("project-1", query.filters, {
-      categories: ["accuracy"],
+      customRules: "统一术语",
       minConfidence: 0.8,
       allowRewrite: true,
+      concurrency: 8,
     });
     await api.pauseAiAudit("audit-1");
     await api.resumeAiAudit("audit-1");
@@ -115,6 +118,13 @@ describe("desktop IPC contract", () => {
     await api.decideAiAuditFinding("finding-1", "edited", "Edited target");
     await api.acceptAllAiAuditFindings("audit-1");
     await api.applyAiAudit("audit-1");
+    await api.getAiAuditDefaults();
+    await api.saveAiAuditDefaults({
+      customRules: "统一术语",
+      minConfidence: 0.8,
+      allowRewrite: true,
+      concurrency: 8,
+    });
     await api.listAiAgentRevisions("session-1");
     await api.applyAiAgentRevisions("session-1", ["rev-1"]);
     await api.ignoreAiAgentRevision("rev-1");
@@ -150,9 +160,10 @@ describe("desktop IPC contract", () => {
       [IPC_CHANNELS.requests.retryAiMessage, "session-1", "main"],
       [IPC_CHANNELS.requests.listAiAuditJobs, "project-1"],
       [IPC_CHANNELS.requests.startAiAudit, "project-1", query.filters, {
-        categories: ["accuracy"],
+        customRules: "统一术语",
         minConfidence: 0.8,
         allowRewrite: true,
+        concurrency: 8,
       }],
       [IPC_CHANNELS.requests.pauseAiAudit, "audit-1"],
       [IPC_CHANNELS.requests.resumeAiAudit, "audit-1"],
@@ -160,6 +171,13 @@ describe("desktop IPC contract", () => {
       [IPC_CHANNELS.requests.decideAiAuditFinding, "finding-1", "edited", "Edited target"],
       [IPC_CHANNELS.requests.acceptAllAiAuditFindings, "audit-1"],
       [IPC_CHANNELS.requests.applyAiAudit, "audit-1"],
+      [IPC_CHANNELS.requests.getAiAuditDefaults],
+      [IPC_CHANNELS.requests.saveAiAuditDefaults, {
+        customRules: "统一术语",
+        minConfidence: 0.8,
+        allowRewrite: true,
+        concurrency: 8,
+      }],
       [IPC_CHANNELS.requests.listAiAgentRevisions, "session-1"],
       [IPC_CHANNELS.requests.applyAiAgentRevisions, "session-1", ["rev-1"]],
       [IPC_CHANNELS.requests.ignoreAiAgentRevision, "rev-1"],

@@ -1,9 +1,34 @@
 import type Database from "better-sqlite3";
+import type { AiAuditDefaults } from "../../src/lib/desktop-types";
 import type { DeepSeekKeyStatus } from "./secret-store";
 import {
   checkDeepSeekConnection,
   type DeepSeekModelId,
 } from "./deepseek-client";
+
+const DEFAULT_AUDIT_DEFAULTS: AiAuditDefaults = {
+  customRules: "",
+  minConfidence: 0.8,
+  allowRewrite: true,
+  concurrency: 8,
+};
+
+function clampConcurrency(value: unknown): number {
+  const n = typeof value === "number" ? value : 8;
+  return Math.min(20, Math.max(1, Math.trunc(n)));
+}
+
+function normalizeAuditDefaults(raw: unknown): AiAuditDefaults {
+  const value =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    customRules: typeof value.customRules === "string" ? value.customRules : "",
+    minConfidence:
+      typeof value.minConfidence === "number" ? value.minConfidence : 0.8,
+    allowRewrite: value.allowRewrite !== false,
+    concurrency: clampConcurrency(value.concurrency),
+  };
+}
 
 export type DeepSeekSettingsStatus = DeepSeekKeyStatus & {
   model: DeepSeekModelId;
@@ -92,6 +117,34 @@ export class DeepSeekSettingsService {
   setModel(model: DeepSeekModelId): void {
     const verifiedAt = this.readSettings()?.key_verified_at ?? null;
     this.upsertSettings(model, verifiedAt);
+  }
+
+  getAuditDefaults(): AiAuditDefaults {
+    const row = this.options.db.prepare(`
+      SELECT rules_json FROM ai_settings WHERE id = 1
+    `).get() as { rules_json: string } | undefined;
+    if (!row) {
+      return { ...DEFAULT_AUDIT_DEFAULTS };
+    }
+    try {
+      return normalizeAuditDefaults(JSON.parse(row.rules_json));
+    } catch {
+      return { ...DEFAULT_AUDIT_DEFAULTS };
+    }
+  }
+
+  saveAuditDefaults(defaults: AiAuditDefaults): AiAuditDefaults {
+    const normalized = normalizeAuditDefaults(defaults);
+    const timestamp = this.now().toISOString();
+    this.options.db.prepare(`
+      INSERT INTO ai_settings (
+        id, model, rules_json, key_verified_at, created_at, updated_at
+      ) VALUES (1, ?, ?, NULL, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        rules_json = excluded.rules_json,
+        updated_at = excluded.updated_at
+    `).run(this.getModel(), JSON.stringify(normalized), timestamp, timestamp);
+    return normalized;
   }
 
   private readSettings(): SettingsRow | null {

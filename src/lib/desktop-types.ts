@@ -199,10 +199,16 @@ export type AiAgentEvent = {
 };
 
 export type AiAuditBoundaries = {
-  categories: string[];
+  /** 用户自由编写的审查规则/要求，注入到审查模型的系统提示中。 */
+  customRules: string;
   minConfidence: number;
   allowRewrite: boolean;
+  /** 并发审查条数，1–20。 */
+  concurrency: number;
 };
+
+/** 可复用的审查默认配置（跨会话持久化，新建任务时预填）。 */
+export type AiAuditDefaults = AiAuditBoundaries;
 
 export type AiAuditJobRecord = {
   id: string;
@@ -307,6 +313,8 @@ export type TmxDesktopApi = {
   ) => Promise<AiAuditFindingRecord>;
   acceptAllAiAuditFindings: (jobId: string) => Promise<number>;
   applyAiAudit: (jobId: string) => Promise<{ applied: number; stale: number }>;
+  getAiAuditDefaults: () => Promise<AiAuditDefaults>;
+  saveAiAuditDefaults: (defaults: AiAuditDefaults) => Promise<AiAuditDefaults>;
   listAiAgentRevisions: (sessionId: string) => Promise<AiAgentRevisionRecord[]>;
   applyAiAgentRevisions: (
     sessionId: string,

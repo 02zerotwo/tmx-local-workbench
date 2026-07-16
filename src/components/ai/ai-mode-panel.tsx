@@ -2,7 +2,6 @@
 
 import {
   Bot,
-  CheckSquare,
   KeyRound,
   ListChecks,
   Loader2,
@@ -11,7 +10,7 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AgentConversation } from "./agent-conversation";
-import { AuditReviewPanel, AuditSetupPanel } from "./audit-panels";
+import { AuditPanel } from "./audit-panel";
 import type {
   DeepSeekSettingsStatus,
   TmxDesktopApi,
@@ -58,6 +57,8 @@ type AiSettingsApi = Pick<
   | "decideAiAuditFinding"
   | "acceptAllAiAuditFindings"
   | "applyAiAudit"
+  | "getAiAuditDefaults"
+  | "saveAiAuditDefaults"
   | "onAiAuditEvent"
 >;
 
@@ -80,7 +81,6 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
   const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("conversation");
-  const showReview = useCallback(() => setActiveTab("review"), []);
 
   useEffect(() => {
     let active = true;
@@ -224,24 +224,20 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
       </div>
       {error ? <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">{error}</div> : null}
       <Tabs className="flex min-h-0 flex-1 flex-col" onValueChange={setActiveTab} value={activeTab}>
-        <TabsList className="m-2 grid w-auto grid-cols-3 rounded-md" variant="default">
+        <TabsList className="m-2 grid w-auto grid-cols-2 rounded-md" variant="default">
           <TabsTrigger value="conversation"><MessageSquare />会话</TabsTrigger>
-          <TabsTrigger value="audit"><ListChecks />审查任务</TabsTrigger>
-          <TabsTrigger value="review"><CheckSquare />结果确认</TabsTrigger>
+          <TabsTrigger value="audit"><ListChecks />审查</TabsTrigger>
         </TabsList>
         <TabsContent className="min-h-0 flex-1 p-2 pt-0" value="conversation">
           <AgentConversation api={api} onApplied={onApplied} projectId={projectId} />
         </TabsContent>
-        <TabsContent className="min-h-0 flex-1 p-0" value="audit">
-          <AuditSetupPanel
+        <TabsContent className="min-h-0 flex-1 p-2 pt-0" value="audit">
+          <AuditPanel
             api={api}
-            onReviewReady={showReview}
+            onApplied={onApplied}
             projectId={projectId}
             targetLanguages={targetLanguages}
           />
-        </TabsContent>
-        <TabsContent className="min-h-0 flex-1 p-0" value="review">
-          <AuditReviewPanel api={api} onApplied={onApplied} projectId={projectId} />
         </TabsContent>
       </Tabs>
       <AlertDialog onOpenChange={setDeleteConfirming} open={deleteConfirming}>

@@ -3,6 +3,7 @@ import type {
   AuditBoundaries,
   AuditFinding,
   AuditJob,
+  AuditQueueItem,
   AiAuditRepository,
   NewAuditFinding,
 } from "../database/ai-audit-repository";
@@ -134,26 +135,23 @@ export class AuditWorkflowService {
     this.running.add(jobId);
     onEvent({ type: "status", job: this.options.repository.setJobStatus(jobId, "running") });
     try {
-      while (!this.paused.has(jobId)) {
-        const item = this.options.repository.getNextPendingItem(jobId);
-        if (!item) break;
+      const { boundaries } = initial;
+
+      const processItem = async (item: AuditQueueItem) => {
         try {
           const analyses = await this.options.analyzeItem({
             sourceLang: item.sourceLang,
             sourceText: item.sourceText,
             targetLang: item.targetLang,
             targetText: item.targetText,
-            boundaries: initial.boundaries,
+            boundaries,
             model: initial.model as DeepSeekModelId,
           });
           const findings = analyses
-            .filter((analysis) => (
-              analysis.confidence >= initial.boundaries.minConfidence
-              && initial.boundaries.categories.includes(analysis.category)
-            ))
+            .filter((analysis) => analysis.confidence >= boundaries.minConfidence)
             .map((analysis) => ({
               ...analysis,
-              suggestedTargetText: initial.boundaries.allowRewrite
+              suggestedTargetText: boundaries.allowRewrite
                 ? analysis.suggestedTargetText
                 : null,
               contentHash: item.contentHash,
@@ -176,9 +174,20 @@ export class AuditWorkflowService {
             error instanceof Error ? error.message : "AI 审查失败",
           );
         }
-        const progress = this.options.repository.getJob(jobId)!;
-        onEvent({ type: "progress", job: progress });
-      }
+        onEvent({ type: "progress", job: this.options.repository.getJob(jobId)! });
+      };
+
+      // 并发消费：启动 concurrency 个 worker，每个原子领取一条处理，直到无待处理项或被暂停。
+      const worker = async (): Promise<void> => {
+        while (!this.paused.has(jobId)) {
+          const [item] = this.options.repository.claimNextPendingItems(jobId, 1);
+          if (!item) return;
+          await processItem(item);
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.max(1, boundaries.concurrency) }, () => worker()),
+      );
 
       if (this.paused.has(jobId)) {
         const paused = this.options.repository.setJobStatus(jobId, "paused");
