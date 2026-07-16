@@ -20,10 +20,7 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-} from "@/components/ai-elements/message";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputBody,
@@ -69,16 +66,16 @@ type ToolState = {
 
 function getText(message: AiMessageRecord): string {
   return message.parts
-    .filter((part): part is { type: "text"; text: string } => (
+    .filter((part): part is { type: "text"; text: string } =>
       Boolean(
-        part
-        && typeof part === "object"
-        && "type" in part
-        && "text" in part
-        && part.type === "text"
-        && typeof part.text === "string",
-      )
-    ))
+        part &&
+        typeof part === "object" &&
+        "type" in part &&
+        "text" in part &&
+        part.type === "text" &&
+        typeof part.text === "string",
+      ),
+    )
     .map((part) => part.text)
     .join("\n");
 }
@@ -109,13 +106,14 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions],
   );
-  const checkpointSaved = messages.some((message) => (
-    message.role === "assistant" && message.status === "complete"
-  ));
+  const checkpointSaved = messages.some(
+    (message) => message.role === "assistant" && message.status === "complete",
+  );
   const lastMessage = messages.at(-1);
-  const retryAvailable = messages.some((message) => message.role === "user")
-    && lastMessage?.role === "assistant"
-    && (lastMessage.status === "interrupted" || lastMessage.status === "error");
+  const retryAvailable =
+    messages.some((message) => message.role === "user") &&
+    lastMessage?.role === "assistant" &&
+    (lastMessage.status === "interrupted" || lastMessage.status === "error");
 
   useEffect(() => {
     activeSessionIdRef.current = activeSessionId;
@@ -124,11 +122,11 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
   const loadSessions = useCallback(async () => {
     const nextSessions = await api.listAiSessions(projectId);
     setSessions(nextSessions);
-    setActiveSessionId((current) => (
+    setActiveSessionId((current) =>
       current && nextSessions.some((session) => session.id === current)
         ? current
-        : nextSessions[0]?.id ?? null
-    ));
+        : (nextSessions[0]?.id ?? null),
+    );
   }, [api, projectId]);
 
   useEffect(() => {
@@ -141,13 +139,18 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
       .finally(() => {
         if (active) setLoading(false);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [loadSessions]);
 
-  const loadMessages = useCallback(async (sessionId: string) => {
-    const nextMessages = await api.listAiMessages(sessionId, "main");
-    setMessages(nextMessages);
-  }, [api]);
+  const loadMessages = useCallback(
+    async (sessionId: string) => {
+      const nextMessages = await api.listAiMessages(sessionId, "main");
+      setMessages(nextMessages);
+    },
+    [api],
+  );
 
   useEffect(() => {
     if (!activeSessionId) {
@@ -160,28 +163,43 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
     });
   }, [activeSessionId, loadMessages]);
 
-  useEffect(() => api.onAiAgentEvent(({ sessionId, event }) => {
-    if (sessionId !== activeSessionIdRef.current) return;
-    if (event.type === "text-delta") {
-      setStreamedText((current) => current + event.delta);
-    } else if (event.type === "reasoning-delta") {
-      setReasoning((current) => current + event.delta);
-    } else if (event.type === "tool") {
-      setTools((current) => {
-        const withoutCurrent = current.filter((item) => item.name !== event.name);
-        return [...withoutCurrent, { name: event.name, status: event.status }];
-      });
-    }
-  }), [api]);
+  useEffect(
+    () =>
+      api.onAiAgentEvent(({ sessionId, event }) => {
+        if (sessionId !== activeSessionIdRef.current) return;
+        if (event.type === "text-delta") {
+          setStreamedText((current) => current + event.delta);
+        } else if (event.type === "reasoning-delta") {
+          setReasoning((current) => current + event.delta);
+        } else if (event.type === "tool") {
+          setTools((current) => {
+            const withoutCurrent = current.filter(
+              (item) => item.name !== event.name,
+            );
+            return [
+              ...withoutCurrent,
+              { name: event.name, status: event.status },
+            ];
+          });
+        }
+      }),
+    [api],
+  );
 
-  const createSession = useCallback(async (title = "新会话") => {
-    const created = await api.createAiSession(projectId, title);
-    setSessions((current) => [created, ...current.filter((item) => item.id !== created.id)]);
-    activeSessionIdRef.current = created.id;
-    setActiveSessionId(created.id);
-    setMessages([]);
-    return created;
-  }, [api, projectId]);
+  const createSession = useCallback(
+    async (title = "新会话") => {
+      const created = await api.createAiSession(projectId, title);
+      setSessions((current) => [
+        created,
+        ...current.filter((item) => item.id !== created.id),
+      ]);
+      activeSessionIdRef.current = created.id;
+      setActiveSessionId(created.id);
+      setMessages([]);
+      return created;
+    },
+    [api, projectId],
+  );
 
   const sendMessage = async (content: string) => {
     const trimmed = content.trim();
@@ -194,7 +212,8 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
     setTools([]);
 
     try {
-      const session = activeSession ?? await createSession(shortTitle(trimmed));
+      const session =
+        activeSession ?? (await createSession(shortTitle(trimmed)));
       setMessages((current) => [
         ...current,
         {
@@ -271,7 +290,6 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
           size="sm"
           title="历史会话"
           type="button"
-          variant="ghost"
         >
           <History size={14} />
           历史
@@ -305,7 +323,10 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
               />
             ) : null}
             {messages.map((message) => (
-              <Message from={message.role === "user" ? "user" : "assistant"} key={message.id}>
+              <Message
+                from={message.role === "user" ? "user" : "assistant"}
+                key={message.id}
+              >
                 <MessageContent>
                   <MarkdownResponse content={getText(message)} />
                 </MessageContent>
@@ -316,9 +337,7 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
                 <MessageContent className="w-full">
                   {reasoning ? (
                     <Reasoning isStreaming>
-                      <ReasoningTrigger
-                        getThinkingMessage={() => "正在思考"}
-                      />
+                      <ReasoningTrigger getThinkingMessage={() => "正在思考"} />
                       <ReasoningContent>{reasoning}</ReasoningContent>
                     </Reasoning>
                   ) : null}
@@ -360,10 +379,17 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
         </Conversation>
 
         {error ? (
-          <div className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">
+          <div
+            className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+            role="alert"
+          >
             <span className="min-w-0 flex-1">{error}</span>
             {retryAvailable ? (
-              <Button onClick={() => void retryMessage()} size="sm" variant="ghost">
+              <Button
+                onClick={() => void retryMessage()}
+                size="sm"
+                variant="ghost"
+              >
                 重试
               </Button>
             ) : null}
@@ -378,7 +404,9 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
               />
             </PromptInputBody>
             <PromptInputFooter>
-              <span className="px-1 text-[11px] text-slate-400">Enter 发送，Shift+Enter 换行</span>
+              <span className="px-1 text-[11px] text-slate-400">
+                Enter 发送，Shift+Enter 换行
+              </span>
               <PromptInputSubmit
                 aria-label="发送"
                 disabled={!activeSessionId && loading}

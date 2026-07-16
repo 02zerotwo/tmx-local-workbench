@@ -852,9 +852,6 @@ export const TranslationEditor = forwardRef<
               <DrawerTitle className="text-sm font-semibold text-slate-900">
                 修改记录
               </DrawerTitle>
-              <DrawerDescription className="text-xs text-slate-500">
-                {row.id}
-              </DrawerDescription>
             </div>
             <DrawerClose asChild>
               <Button
