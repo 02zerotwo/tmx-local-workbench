@@ -14,7 +14,12 @@
     "native:electron": "electron-rebuild -f -w better-sqlite3",
     "native:electron:win": "pnpm --config.platform=win32 --config.arch=x64 --config.runtime=electron --config.target=42.7.0 rebuild better-sqlite3",
     "desktop:build": "node -e \"require('node:fs').rmSync('dist-desktop',{recursive:true,force:true})\" && tsc -p tsconfig.desktop.json",
+    "desktop:build:watch": "tsc -p tsconfig.desktop.json --watch --preserveWatchOutput",
     "desktop:dev": "pnpm build && pnpm desktop:build && pnpm native:electron && electron .",
+    "desktop:dev:renderer": "next dev",
+    "desktop:dev:electron": "wait-on tcp:3000 && cross-env ELECTRON_RENDERER_URL=http://localhost:3000 nodemon --watch dist-desktop/desktop --watch dist-desktop/src --ext js --exec electron .",
+    "desktop:dev:hot": "pnpm desktop:build && pnpm native:electron && concurrently -k -n NEXT,TSC,ELECTRON -c blue,yellow,green \"pnpm desktop:dev:renderer\" \"pnpm desktop:build:watch\" \"pnpm desktop:dev:electron\"",
+    "dev:hot": "pnpm desktop:dev:hot",
     "desktop:package": "pnpm build && pnpm desktop:build && electron-forge package",
     "desktop:make": "pnpm build && pnpm desktop:build && electron-forge make",
     "desktop:make:win": "pnpm build && pnpm desktop:build && pnpm native:electron:win && electron-forge make --platform win32 --arch x64"
@@ -65,6 +70,8 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
     "electron": "^42.7.0",
     "eslint": "^9.31.0",
     "eslint-config-next": "^15.4.1",
@@ -72,13 +79,15 @@
     "jsdom": "^26.1.0",
     "lucide-react": "^0.468.0",
     "next": "^15.4.1",
+    "nodemon": "^3.1.14",
     "postcss": "^8.5.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "shadcn": "^4.13.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wait-on": "^9.0.10"
   },
   "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8",
   "pnpm": {

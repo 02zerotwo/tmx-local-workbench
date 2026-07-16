@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
+const isProductionBuild = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
-  assetPrefix: "./",
-  output: "export",
+  ...(isProductionBuild
+    ? { assetPrefix: "./", output: "export" as const }
+    : {}),
   images: {
     unoptimized: true,
   },

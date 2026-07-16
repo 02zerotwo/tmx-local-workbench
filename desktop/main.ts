@@ -48,8 +48,8 @@ async function startApplication(): Promise<void> {
   const userDataDirectory = join(app.getPath("userData"), "data");
   const databasePath = resolveDatabasePath({
     portableDataDirectory: app.isPackaged ? portableDataDirectory : undefined,
-    portableDataDirectoryWritable: app.isPackaged
-      && ensureWritableDirectory(portableDataDirectory),
+    portableDataDirectoryWritable:
+      app.isPackaged && ensureWritableDirectory(portableDataDirectory),
     userDataDirectory,
   });
   databaseService = new DatabaseBackupService({ databasePath });
@@ -91,7 +91,8 @@ function registerDataHandlers(databasePath: string): void {
     repository: aiAuditRepository,
     unitRepository,
     analyzeItem: createAuditAnalyzer(aiSettingsService),
-    transaction: (operation) => databaseService!.database.transaction(operation)(),
+    transaction: (operation) =>
+      databaseService!.database.transaction(operation)(),
   });
 
   registerDesktopHandlers({
@@ -111,17 +112,17 @@ function registerDataHandlers(databasePath: string): void {
       suggestedFilePath,
       operationId,
       onProgress,
-    }) => exportProjectToExcel({
-      projectId,
-      filters,
-      outputPath: suggestedFilePath,
-      operationId,
-      unitRepository,
-      onProgress,
-    }),
-    backupDatabase: (suggestedFilePath) => (
-      Promise.resolve(databaseService!.backup(suggestedFilePath))
-    ),
+    }) =>
+      exportProjectToExcel({
+        projectId,
+        filters,
+        outputPath: suggestedFilePath,
+        operationId,
+        unitRepository,
+        onProgress,
+      }),
+    backupDatabase: (suggestedFilePath) =>
+      Promise.resolve(databaseService!.backup(suggestedFilePath)),
     restoreDatabase: async (backupPath) => {
       try {
         databaseService!.restore(backupPath);
@@ -148,12 +149,15 @@ if (!hasSingleInstanceLock) {
       mainWindow.focus();
     }
   });
-  app.whenReady().then(startApplication).catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("TMX Workbench failed to start", error);
-    void dialog.showErrorBox("TMX 工作台启动失败", message);
-    app.quit();
-  });
+  app
+    .whenReady()
+    .then(startApplication)
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("TMX Workbench failed to start", error);
+      void dialog.showErrorBox("TMX 工作台启动失败", message);
+      app.quit();
+    });
 }
 
 app.on("window-all-closed", () => app.quit());
