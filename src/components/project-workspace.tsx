@@ -578,7 +578,7 @@ export function ProjectWorkspace({
         </Select>
         <ToggleGroup
           aria-label="翻译状态"
-          className="grid h-8 shrink-0 grid-cols-3 rounded-lg bg-muted p-1"
+          className="grid h-full shrink-0 grid-cols-3 rounded-lg bg-muted p-1"
           onValueChange={(value) => {
             if (!value) {
               return;
