@@ -39,10 +39,22 @@ import {
 import { Pagination } from "./pagination";
 import { AiModePanel } from "./ai/ai-mode-panel";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   TranslationEditor,
   type TranslationEditorHandle,
@@ -381,20 +393,21 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           <span>空译文 <strong className="ml-1 text-red-700">{project.emptyUnits.toLocaleString()}</strong></span>
         </div>
         <Button
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-9 text-slate-700"
           disabled={exporting}
           onClick={() => void exportProject("filtered")}
           type="button"
-          variant="outline"
+          variant="ghost"
         >
           <Download size={16} />
           导出筛选
         </Button>
         <Button
-          className="inline-flex h-10 cursor-pointer items-center gap-2 rounded bg-blue-700 px-3 text-sm font-medium text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-9 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
           disabled={exporting}
           onClick={() => void exportProject("all")}
           type="button"
+          variant="ghost"
         >
           {exporting ? <Loader2 className="animate-spin" size={16} /> : <FileSpreadsheet size={16} />}
           导出全部
@@ -426,11 +439,11 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
             {exportedPath}
           </span>
           <Button
-            className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded border border-emerald-300 bg-white px-2.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            className="h-8 shrink-0 gap-1.5 px-2.5 text-xs text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
             onClick={() => void openExportDirectory()}
             size="sm"
             type="button"
-            variant="outline"
+            variant="ghost"
           >
             <FolderOpen size={14} />
             打开文件夹
@@ -457,30 +470,31 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           />
         </label>
         <Button
-          className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded bg-blue-700 px-3 text-sm font-medium text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="h-10 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
           onClick={() => void commitAction({ type: "submitSearch" })}
           type="button"
+          variant="ghost"
         >
           <Search size={15} />
           搜索
         </Button>
-        <label>
-          <span className="sr-only">目标语言</span>
-          <NativeSelect
-            aria-label="目标语言"
-            className="w-full"
-            onChange={(event) => void commitAction({
+        <Select
+          onValueChange={(value) => void commitAction({
               type: "setTargetLanguage",
-              targetLanguage: event.target.value,
+              targetLanguage: value === "__all__" ? "" : value,
             })}
-            value={filters.targetLanguage}
-          >
-            <NativeSelectOption value="">全部目标语言</NativeSelectOption>
+          value={filters.targetLanguage || "__all__"}
+        >
+          <SelectTrigger aria-label="目标语言" className="h-10 w-full rounded-md bg-white">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="__all__">全部目标语言</SelectItem>
             {project.targetLanguages.map((language) => (
-              <NativeSelectOption key={language} value={language}>{language}</NativeSelectOption>
+              <SelectItem key={language} value={language}>{language}</SelectItem>
             ))}
-          </NativeSelect>
-        </label>
+          </SelectContent>
+        </Select>
         <div className="grid h-10 grid-cols-3 rounded border border-slate-300 bg-slate-50 p-0.5" role="group" aria-label="翻译状态">
           <StatusButton active={filters.status === "all"} label="全部" onClick={() => void commitAction({ type: "setStatus", status: "all" })} />
           <StatusButton active={filters.status === "changed"} label="已修改" onClick={() => void commitAction({ type: "setStatus", status: "changed" })} />
@@ -498,98 +512,110 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
         </label>
       </section>
 
-      <section className="flex min-h-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-3 text-xs text-slate-500">
-            <span>{result.total.toLocaleString()} 条结果</span>
-            <Button
-              className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded px-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onClick={() => void commitAction({ type: "clearFilters" })}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              <FilterX size={14} />
-              清除筛选
-            </Button>
-          </div>
-          <TranslationTable
-            loading={loading}
-            onSelect={(row) => void selectRow(row)}
-            resetKey={resetKey}
-            rows={result.rows}
-            selectedRowId={selectedRowId}
-          />
-          <Pagination
-            onPageChange={(nextPage) => void commitAction({ type: "setPage", page: nextPage })}
-            onPageSizeChange={(nextSize) => void commitAction({ type: "setPageSize", pageSize: nextSize })}
-            page={result.page}
-            pageCount={result.pageCount}
-            pageSize={workspace.pageSize}
-            total={result.total}
-          />
-        </div>
-
-        <div className={panelMode === "ai"
-          ? "flex min-h-0 w-[520px] shrink-0 flex-col border-l border-slate-200 bg-slate-50"
-          : "flex min-h-0 w-[420px] shrink-0 flex-col border-l border-slate-200 bg-slate-50"}
-        >
-          <div className="grid h-11 shrink-0 grid-cols-2 gap-1 border-b border-slate-200 bg-white p-1.5">
-            <Button
-              aria-pressed={panelMode === "edit"}
-              onClick={() => setPanelMode("edit")}
-              size="sm"
-              type="button"
-              variant={panelMode === "edit" ? "secondary" : "ghost"}
-            >
-              <PencilLine />
-              编辑
-            </Button>
-            <Button
-              aria-pressed={panelMode === "ai"}
-              onClick={() => setPanelMode("ai")}
-              size="sm"
-              type="button"
-              variant={panelMode === "ai" ? "secondary" : "ghost"}
-            >
-              <Sparkles />
-              AI 模式
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 [&>aside]:h-full [&>aside]:w-full [&>aside]:border-l-0">
-            {panelMode === "ai" ? (
-              <AiModePanel
-                api={api}
-                filters={filters}
-                onApplied={() => setDataRefreshNonce((current) => current + 1)}
-                projectId={project.id}
-                resultCount={result.total}
-              />
-            ) : selectedRow ? (
-              <TranslationEditor
-                canNext={canNext}
-                canPrevious={canPrevious}
-                editingLocked={exporting || pageTransitioning}
-                history={history}
-                historyError={historyError}
-                historyLoading={historyLoading}
-                key={`${selectedRow.rowId}:${editorNonce}`}
-                onNext={() => navigateEditor("next")}
-                onCopyText={api.copyText}
-                onPrevious={() => navigateEditor("previous")}
-                onRestoreHistory={restoreHistory}
-                onSave={saveTranslation}
-                onSaved={applySavedRow}
-                ref={editorRef}
-                row={selectedRow}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
-                选择一条翻译开始编辑
+      <section className="min-h-0 flex-1">
+        <ResizablePanelGroup className="min-h-0" orientation="horizontal">
+          <ResizablePanel defaultSize="50" id="translation-list" minSize="35%">
+            <div className="flex h-full min-w-0 flex-col">
+              <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-3 text-xs text-slate-500">
+                <span>{result.total.toLocaleString()} 条结果</span>
+                <Button
+                  className="h-8 gap-1.5 px-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  onClick={() => void commitAction({ type: "clearFilters" })}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <FilterX size={14} />
+                  清除筛选
+                </Button>
               </div>
-            )}
-          </div>
-        </div>
+              <TranslationTable
+                loading={loading}
+                onSelect={(row) => void selectRow(row)}
+                resetKey={resetKey}
+                rows={result.rows}
+                selectedRowId={selectedRowId}
+              />
+              <Pagination
+                onPageChange={(nextPage) => void commitAction({ type: "setPage", page: nextPage })}
+                onPageSizeChange={(nextSize) => void commitAction({ type: "setPageSize", pageSize: nextSize })}
+                page={result.page}
+                pageCount={result.pageCount}
+                pageSize={workspace.pageSize}
+                total={result.total}
+              />
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle aria-label="调整工作区宽度" withHandle />
+
+          <ResizablePanel defaultSize="50" id="detail-workspace" minSize="35%">
+            <div className="flex h-full min-h-0 flex-col bg-slate-50" data-testid="workspace-detail-panel">
+              <div className="flex h-12 shrink-0 items-center border-b border-slate-200 bg-white px-3">
+                <ButtonGroup aria-label="工作模式" className="grid w-full grid-cols-2 rounded-md bg-slate-100 p-1">
+                  <Button
+                    aria-pressed={panelMode === "edit"}
+                    className={panelMode === "edit"
+                      ? "bg-white text-slate-950 shadow-sm hover:bg-white"
+                      : "text-slate-500 hover:bg-white/70 hover:text-slate-900"}
+                    onClick={() => setPanelMode("edit")}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <PencilLine />
+                    编辑
+                  </Button>
+                  <Button
+                    aria-pressed={panelMode === "ai"}
+                    className={panelMode === "ai"
+                      ? "bg-white text-slate-950 shadow-sm hover:bg-white"
+                      : "text-slate-500 hover:bg-white/70 hover:text-slate-900"}
+                    onClick={() => setPanelMode("ai")}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Sparkles />
+                    AI 模式
+                  </Button>
+                </ButtonGroup>
+              </div>
+              <div className="min-h-0 flex-1 [&>aside]:h-full [&>aside]:border-l-0">
+                {panelMode === "ai" ? (
+                  <AiModePanel
+                    api={api}
+                    onApplied={() => setDataRefreshNonce((current) => current + 1)}
+                    projectId={project.id}
+                    targetLanguages={project.targetLanguages}
+                  />
+                ) : selectedRow ? (
+                  <TranslationEditor
+                    canNext={canNext}
+                    canPrevious={canPrevious}
+                    editingLocked={exporting || pageTransitioning}
+                    history={history}
+                    historyError={historyError}
+                    historyLoading={historyLoading}
+                    key={`${selectedRow.rowId}:${editorNonce}`}
+                    onNext={() => navigateEditor("next")}
+                    onCopyText={api.copyText}
+                    onPrevious={() => navigateEditor("previous")}
+                    onRestoreHistory={restoreHistory}
+                    onSave={saveTranslation}
+                    onSaved={applySavedRow}
+                    ref={editorRef}
+                    row={selectedRow}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
+                    选择一条翻译开始编辑
+                  </div>
+                )}
+              </div>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </section>
     </main>
   );

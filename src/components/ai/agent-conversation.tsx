@@ -370,7 +370,7 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
           <div className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">
             <span className="min-w-0 flex-1">{error}</span>
             {retryAvailable ? (
-              <Button onClick={() => void retryMessage()} size="sm" variant="outline">
+              <Button onClick={() => void retryMessage()} size="sm" variant="ghost">
                 重试
               </Button>
             ) : null}

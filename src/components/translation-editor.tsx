@@ -32,6 +32,14 @@ import type {
 } from "@/lib/desktop-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
@@ -512,7 +520,7 @@ export const TranslationEditor = forwardRef<
   };
 
   return (
-    <aside className="relative flex min-h-0 w-[420px] shrink-0 flex-col border-l border-slate-200 bg-slate-50">
+    <aside className="relative flex min-h-0 w-full shrink-0 flex-col border-l border-slate-200 bg-slate-50">
       <div
         aria-hidden={historyOpen || undefined}
         className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4"
@@ -546,12 +554,12 @@ export const TranslationEditor = forwardRef<
           </div>
           <Button
             aria-label="修改记录"
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-9 shrink-0 px-2 text-xs text-slate-700"
             onClick={() => setHistoryOpen(true)}
             ref={historyButtonRef}
             size="sm"
             type="button"
-            variant="outline"
+            variant="ghost"
           >
             <History size={14} />
             记录
@@ -682,28 +690,27 @@ export const TranslationEditor = forwardRef<
                 <Button
                   aria-label="区分大小写"
                   aria-pressed={caseSensitive}
-                  className={
-                    caseSensitive
-                      ? "inline-flex size-8 shrink-0 items-center justify-center rounded border border-blue-600 bg-blue-50 text-blue-700 outline-none focus:ring-2 focus:ring-blue-500"
-                      : "inline-flex size-8 shrink-0 items-center justify-center rounded border border-slate-300 text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  }
+                  className={caseSensitive
+                    ? "size-8 shrink-0 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    : "size-8 shrink-0 text-slate-600"}
                   disabled={interactionLocked}
                   onClick={toggleCaseSensitive}
                   title="区分大小写"
                   size="icon-sm"
                   type="button"
-                  variant={caseSensitive ? "secondary" : "outline"}
+                  variant="ghost"
                 >
                   <CaseSensitiveIcon size={15} />
                 </Button>
                 <Button
                   aria-label="执行查找"
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded bg-blue-700 text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="size-8 shrink-0 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
                   disabled={interactionLocked || !findDraft}
                   onClick={() => submitFind()}
                   title="执行查找（Enter）"
                   size="icon-sm"
                   type="button"
+                  variant="ghost"
                 >
                   <Search size={14} />
                 </Button>
@@ -743,7 +750,7 @@ export const TranslationEditor = forwardRef<
                   <ChevronDown size={14} />
                 </IconButton>
                 <Button
-                  className="h-7 whitespace-nowrap rounded border border-slate-300 px-2 text-xs text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="h-7 whitespace-nowrap px-2 text-xs text-slate-700"
                   disabled={
                     interactionLocked || !findQuery || matches.length === 0
                   }
@@ -751,12 +758,12 @@ export const TranslationEditor = forwardRef<
                   title="替换当前匹配"
                   size="sm"
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                 >
                   替换当前
                 </Button>
                 <Button
-                  className="h-7 whitespace-nowrap rounded border border-slate-300 px-2 text-xs text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="h-7 whitespace-nowrap px-2 text-xs text-slate-700"
                   disabled={
                     interactionLocked || !findQuery || matches.length === 0
                   }
@@ -764,7 +771,7 @@ export const TranslationEditor = forwardRef<
                   title="替换全部匹配"
                   size="sm"
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                 >
                   全部替换
                 </Button>
@@ -822,25 +829,35 @@ export const TranslationEditor = forwardRef<
         </div>
       </div>
 
-      {historyOpen ? (
-        <aside
-          aria-label="修改记录"
-          className="absolute inset-0 z-20 flex flex-col bg-slate-50 shadow-xl"
+      <Sheet onOpenChange={setHistoryOpen} open={historyOpen}>
+        <SheetContent
+          className="w-[min(520px,50vw)] gap-0 bg-slate-50 p-0 sm:max-w-[520px]"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            historyButtonRef.current?.focus();
+          }}
+          showCloseButton={false}
+          side="right"
         >
-          <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4">
+          <SheetHeader className="flex h-14 shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-0 text-left">
             <div>
-              <h2 className="text-sm font-semibold text-slate-900">修改记录</h2>
-              <p className="text-xs text-slate-500">{row.id}</p>
+              <SheetTitle className="text-sm font-semibold text-slate-900">修改记录</SheetTitle>
+              <SheetDescription className="text-xs text-slate-500">{row.id}</SheetDescription>
             </div>
-            <IconButton
-              buttonRef={historyCloseButtonRef}
-              label="关闭修改记录"
-              onClick={() => setHistoryOpen(false)}
-              title="关闭修改记录"
-            >
-              <X size={16} />
-            </IconButton>
-          </header>
+            <SheetClose asChild>
+              <Button
+                aria-label="关闭修改记录"
+                className="size-8 text-slate-500"
+                ref={historyCloseButtonRef}
+                size="icon"
+                title="关闭修改记录"
+                type="button"
+                variant="ghost"
+              >
+                <X size={16} />
+              </Button>
+            </SheetClose>
+          </SheetHeader>
           <div
             className="min-h-0 flex-1 space-y-3 overflow-auto p-4"
             data-testid="translation-history"
@@ -877,12 +894,12 @@ export const TranslationEditor = forwardRef<
                           </time>
                         </div>
                         <Button
-                          className="h-7 shrink-0 rounded border border-slate-300 px-2 text-xs text-slate-700 disabled:opacity-40"
+                          className="h-7 shrink-0 px-2 text-xs text-slate-700"
                           disabled={interactionLocked || !onRestoreHistory}
                           onClick={() => void restoreHistory(entry)}
                           size="sm"
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                         >
                           恢复此版本
                         </Button>
@@ -908,12 +925,12 @@ export const TranslationEditor = forwardRef<
                       导入版本
                     </p>
                     <Button
-                      className="h-7 shrink-0 rounded border border-slate-300 px-2 text-xs text-slate-700 disabled:opacity-40"
+                      className="h-7 shrink-0 px-2 text-xs text-slate-700"
                       disabled={interactionLocked || !onRestoreHistory}
                       onClick={() => void restoreHistory(importedSnapshot)}
                       size="sm"
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                     >
                       恢复此版本
                     </Button>
@@ -934,8 +951,8 @@ export const TranslationEditor = forwardRef<
               </>
             )}
           </div>
-        </aside>
-      ) : null}
+        </SheetContent>
+      </Sheet>
 
       <div
         aria-hidden={historyOpen || undefined}
@@ -960,22 +977,23 @@ export const TranslationEditor = forwardRef<
           <ArrowRight size={16} />
         </TooltipIconButton>
         <Button
-          className="inline-flex h-9 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded border border-blue-700 px-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="h-9 min-w-0 gap-1 px-2 text-xs text-blue-700 hover:bg-blue-50 hover:text-blue-800"
           disabled={interactionLocked}
           onClick={() => void saveExplicitly()}
           size="sm"
           type="button"
-          variant="outline"
+          variant="ghost"
         >
           <Save className="shrink-0" size={14} />
           <span className="truncate">立即保存</span>
         </Button>
         <Button
-          className="inline-flex h-9 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded bg-blue-700 px-2 text-xs font-medium text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-9 min-w-0 gap-1 px-2 text-xs text-blue-700 hover:bg-blue-50 hover:text-blue-800"
           disabled={interactionLocked || !canNext}
           onClick={() => void saveAndNext()}
           size="sm"
           type="button"
+          variant="ghost"
         >
           <Save className="shrink-0" size={14} />
           <span className="truncate">保存并下一条</span>
@@ -1136,14 +1154,14 @@ function IconButton({
   return (
     <Button
       aria-label={label}
-      className="inline-flex size-9 shrink-0 items-center justify-center rounded border border-slate-300 text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+      className="size-9 shrink-0 text-slate-700"
       disabled={disabled}
       onClick={onClick}
       ref={buttonRef}
       title={title}
       size="icon"
       type="button"
-      variant="outline"
+      variant="ghost"
     >
       {children}
     </Button>
@@ -1169,12 +1187,12 @@ function TooltipIconButton({
         <TooltipTrigger asChild>
           <Button
             aria-label={label}
-            className="inline-flex size-9 items-center justify-center rounded border border-slate-300 text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className="size-9 text-slate-700"
             disabled={disabled}
             onClick={onClick}
             size="icon"
             type="button"
-            variant="outline"
+            variant="ghost"
           >
             {children}
             <span className="sr-only">{label} {shortcut}</span>

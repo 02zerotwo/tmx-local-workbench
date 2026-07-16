@@ -61,6 +61,10 @@ describe("ProjectLibrary", () => {
     expect(await screen.findByText("Service Manual")).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "项目" })).toBeInTheDocument();
     expect(screen.getAllByText("1,245")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /导入 TMX/ }))
+      .toHaveAttribute("data-variant", "ghost");
+    expect(screen.getByRole("button", { name: "删除 Service Manual" }))
+      .toHaveAttribute("data-variant", "destructive");
     fireEvent.click(screen.getByRole("button", { name: "打开 Service Manual" }));
     expect(onOpenProject).toHaveBeenCalledWith(PROJECT);
   });

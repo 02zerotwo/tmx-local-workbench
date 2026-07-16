@@ -296,7 +296,7 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
           size="icon"
           title="打开数据目录"
           type="button"
-          variant="outline"
+          variant="ghost"
         >
           <FolderOpen size={17} />
         </Button>
@@ -305,7 +305,7 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
           disabled={busyAction !== null}
           onClick={() => void runDatabaseAction("backup")}
           type="button"
-          variant="outline"
+          variant="ghost"
         >
           <DatabaseBackup size={16} />
           备份
@@ -315,16 +315,17 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
           disabled={busyAction !== null}
           onClick={() => void runDatabaseAction("restore")}
           type="button"
-          variant="outline"
+          variant="ghost"
         >
           <RotateCcw size={16} />
           恢复
         </Button>
         <Button
-          className="h-10 px-4"
+          className="h-10 px-4 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
           disabled={busyAction !== null}
           onClick={() => void importProject()}
           type="button"
+          variant="ghost"
         >
           {busyAction === "import"
             ? <Loader2 className="animate-spin" size={17} />
@@ -395,9 +396,10 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
             <h2 className="mt-4 text-base font-semibold text-slate-900">还没有项目</h2>
             <p className="mt-1 text-sm text-slate-500">导入第一个 TMX 文件后即可开始筛选和编辑。</p>
             <Button
-              className="mt-5 h-10 px-4"
+              className="mt-5 h-10 px-4 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
               onClick={() => void importProject()}
               type="button"
+              variant="ghost"
             >
               <FileUp size={17} />
               导入 TMX
@@ -429,11 +431,11 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
                 >
                   <TableCell className="px-3">
                       <Button
-                        className="block h-auto max-w-full truncate p-0 text-left font-medium text-slate-950 hover:text-blue-700 disabled:text-slate-500"
+                        className="block h-auto max-w-full justify-start truncate px-1 py-0 text-left font-medium text-slate-950 hover:bg-blue-50 hover:text-blue-700 disabled:text-slate-500"
                         disabled={project.importStatus !== "ready"}
                         onClick={() => onOpenProject(project)}
                         type="button"
-                        variant="link"
+                        variant="ghost"
                       >
                         {project.name}
                       </Button>
@@ -527,14 +529,15 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
                 className="h-10 px-4"
                 onClick={() => setRenameProject(null)}
                 type="button"
-                variant="outline"
+                variant="ghost"
               >
                 取消
               </Button>
               <Button
-                className="h-10 px-4"
+                className="h-10 px-4 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
                 disabled={!renameValue.trim() || busyAction === "rename"}
                 type="submit"
+                variant="ghost"
               >
                 {busyAction === "rename" ? "保存中..." : "保存名称"}
               </Button>
@@ -629,14 +632,14 @@ function IconButton({
     <Button
       aria-label={label}
       className={danger
-        ? "size-9 text-slate-500 hover:bg-red-50 hover:text-red-700"
+        ? "size-9"
         : "size-9 text-slate-500 hover:bg-slate-100 hover:text-slate-950"}
       disabled={disabled}
       onClick={onClick}
       size="icon"
       title={label}
       type="button"
-      variant="ghost"
+      variant={danger ? "destructive" : "ghost"}
     >
       {children}
     </Button>

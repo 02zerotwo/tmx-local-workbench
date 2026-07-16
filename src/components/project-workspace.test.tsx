@@ -189,6 +189,46 @@ afterEach(() => {
 });
 
 describe("ProjectWorkspace filtering and pagination", () => {
+  it("starts with an accessible 50/50 resizable workspace split", async () => {
+    const api = createApi();
+    const { container } = render(
+      <ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />,
+    );
+    await screen.findByRole("textbox", { name: "目标文本" });
+
+    expect(container.querySelector('[data-slot="resizable-panel-group"]'))
+      .toHaveAttribute("data-panel-group-direction", "horizontal");
+    expect(container.querySelectorAll('[data-slot="resizable-panel"]'))
+      .toHaveLength(2);
+    expect(container.querySelectorAll('[data-default-size="50"]'))
+      .toHaveLength(2);
+    expect(screen.getByRole("separator", { name: "调整工作区宽度" }))
+      .toBeInTheDocument();
+  });
+
+  it("uses shadcn controls for language and the stable workspace mode switch", async () => {
+    const api = createApi();
+    const { container } = render(
+      <ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />,
+    );
+    await screen.findByRole("textbox", { name: "目标文本" });
+
+    expect(screen.getByRole("combobox", { name: "目标语言" }))
+      .toHaveAttribute("data-slot", "select-trigger");
+    const modeSwitch = screen.getByRole("group", { name: "工作模式" });
+    expect(modeSwitch).toHaveAttribute("data-slot", "button-group");
+    expect(within(modeSwitch).getByRole("button", { name: "编辑" }))
+      .toHaveAttribute("aria-pressed", "true");
+    expect(within(modeSwitch).getByRole("button", { name: "编辑" }))
+      .toHaveAttribute("data-variant", "ghost");
+    expect(within(modeSwitch).getByRole("button", { name: "AI 模式" }))
+      .toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "搜索" }))
+      .toHaveAttribute("data-variant", "ghost");
+    expect(container.querySelectorAll('[data-testid="workspace-detail-panel"]'))
+      .toHaveLength(1);
+  });
+
   it("keeps the pagination footer at the same fixed height as editor actions", async () => {
     const api = createApi();
     render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
@@ -255,9 +295,8 @@ describe("ProjectWorkspace filtering and pagination", () => {
       expect.objectContaining({ page: 2 }),
     ));
 
-    fireEvent.change(screen.getByLabelText("目标语言"), {
-      target: { value: "de-DE" },
-    });
+    fireEvent.click(screen.getByRole("combobox", { name: "目标语言" }));
+    fireEvent.click(screen.getByRole("option", { name: "de-DE" }));
     await waitFor(() => expect(api.queryProject).toHaveBeenLastCalledWith(
       expect.objectContaining({
         page: 1,
@@ -539,8 +578,17 @@ describe("ProjectWorkspace history", () => {
   async function openHistoryDrawer() {
     await screen.findByRole("textbox", { name: "目标文本" });
     fireEvent.click(screen.getByRole("button", { name: "修改记录" }));
-    return screen.getByRole("complementary", { name: "修改记录" });
+    return screen.getByRole("dialog", { name: "修改记录" });
   }
+
+  it("renders translation history in a shadcn sheet", async () => {
+    const api = createApi();
+    render(<ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />);
+
+    await openHistoryDrawer();
+
+    expect(document.querySelector('[data-slot="sheet-content"]')).not.toBeNull();
+  });
 
   it("ignores a stale history response after selecting another row", async () => {
     const api = createApi();

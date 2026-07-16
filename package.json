@@ -1,7 +1,7 @@
 {
   "name": "tmx-local-workbench",
   "productName": "TMX Local Workbench",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "main": "dist-desktop/desktop/main.js",
   "scripts": {
@@ -36,6 +36,7 @@
     "nanoid": "^6.0.0",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.6.2",
+    "react-resizable-panels": "^4.12.2",
     "saxes": "^6.0.0",
     "shiki": "^4.3.1",
     "sonner": "^2.0.7",

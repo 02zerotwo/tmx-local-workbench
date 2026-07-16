@@ -12,6 +12,16 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +30,6 @@ import { AgentConversation } from "./agent-conversation";
 import { AuditReviewPanel, AuditSetupPanel } from "./audit-panels";
 import type {
   DeepSeekSettingsStatus,
-  ProjectFilters,
   TmxDesktopApi,
 } from "@/lib/desktop-types";
 
@@ -30,6 +39,7 @@ type AiSettingsApi = Pick<
   | "saveDeepSeekKey"
   | "verifyDeepSeekConnection"
   | "deleteDeepSeekKey"
+  | "queryProject"
   | "listAiSessions"
   | "createAiSession"
   | "listAiMessages"
@@ -51,8 +61,7 @@ type AiSettingsApi = Pick<
 type AiModePanelProps = {
   api: AiSettingsApi;
   projectId: string;
-  resultCount: number;
-  filters: ProjectFilters;
+  targetLanguages: string[];
   onApplied: () => void;
 };
 
@@ -60,11 +69,12 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "AI 操作失败，请重试";
 }
 
-export function AiModePanel({ api, projectId, resultCount, filters, onApplied }: AiModePanelProps) {
+export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiModePanelProps) {
   const [settings, setSettings] = useState<DeepSeekSettingsStatus | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("conversation");
   const showReview = useCallback(() => setActiveTab("review"), []);
@@ -121,6 +131,7 @@ export function AiModePanel({ api, projectId, resultCount, filters, onApplied }:
     setError("");
     try {
       setSettings(await api.deleteDeepSeekKey());
+      setDeleteConfirming(false);
     } catch (deleteError) {
       setError(errorMessage(deleteError));
     } finally {
@@ -164,10 +175,11 @@ export function AiModePanel({ api, projectId, resultCount, filters, onApplied }:
             value={apiKey}
           />
           <Button
-            className="h-10 w-full"
+            className="h-10 w-full text-blue-700 hover:bg-blue-50 hover:text-blue-800"
             disabled={busy || !apiKey.trim()}
             onClick={() => void saveKey()}
             type="button"
+            variant="ghost"
           >
             {busy ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
             保存并验证
@@ -192,14 +204,14 @@ export function AiModePanel({ api, projectId, resultCount, filters, onApplied }:
           onClick={() => void verify()}
           size="icon-sm"
           title="验证连接"
-          variant="ghost"
+          variant="destructive"
         >
           <RefreshCw className={busy ? "animate-spin" : ""} />
         </Button>
         <Button
           aria-label="删除 API Key"
           disabled={busy}
-          onClick={() => void deleteKey()}
+          onClick={() => setDeleteConfirming(true)}
           size="icon-sm"
           title="删除 API Key"
           variant="ghost"
@@ -220,16 +232,36 @@ export function AiModePanel({ api, projectId, resultCount, filters, onApplied }:
         <TabsContent className="min-h-0 flex-1 p-0" value="audit">
           <AuditSetupPanel
             api={api}
-            filters={filters}
             onReviewReady={showReview}
             projectId={projectId}
-            resultCount={resultCount}
+            targetLanguages={targetLanguages}
           />
         </TabsContent>
         <TabsContent className="min-h-0 flex-1 p-0" value="review">
           <AuditReviewPanel api={api} onApplied={onApplied} projectId={projectId} />
         </TabsContent>
       </Tabs>
+      <AlertDialog onOpenChange={setDeleteConfirming} open={deleteConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除 DeepSeek API Key</AlertDialogTitle>
+            <AlertDialogDescription>
+              删除后 AI 会话和审查功能将暂停使用，已有会话与审查记录不会被删除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy} variant="ghost">取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={() => void deleteKey()}
+              variant="destructive"
+            >
+              {busy ? <Loader2 className="animate-spin" /> : null}
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

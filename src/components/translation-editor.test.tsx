@@ -138,6 +138,10 @@ describe("TranslationEditor navigation and saving", () => {
       .not.toBeInTheDocument();
     expect(within(footer).getByRole("button", { name: "立即保存" })).toBeVisible();
     expect(within(footer).getByRole("button", { name: "保存并下一条" })).toBeVisible();
+    expect(within(footer).getByRole("button", { name: "立即保存" }))
+      .toHaveAttribute("data-variant", "ghost");
+    expect(within(footer).getByRole("button", { name: "保存并下一条" }))
+      .toHaveAttribute("data-variant", "ghost");
     expect(within(footer).getByText(/Alt\+↑/)).toBeInTheDocument();
     expect(within(footer).getByText(/Alt\+↓/)).toBeInTheDocument();
     expect(footer).toHaveClass("h-14");
@@ -574,24 +578,25 @@ describe("TranslationEditor find and replace", () => {
 describe("TranslationEditor history", () => {
   function openHistory() {
     fireEvent.click(screen.getByRole("button", { name: "修改记录" }));
-    return screen.getByRole("complementary", { name: "修改记录" });
+    return screen.getByRole("dialog", { name: "修改记录" });
   }
 
-  it("keeps history out of the editor until the top button opens its overlay drawer", () => {
+  it("keeps history out of the editor until the top button opens its overlay drawer", async () => {
     setup();
-    expect(screen.queryByRole("complementary", { name: "修改记录" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "修改记录" })).not.toBeInTheDocument();
 
     const historyButton = screen.getByRole("button", { name: "修改记录" });
     const drawer = openHistory();
-    expect(drawer).toHaveClass("absolute");
+    expect(drawer).toHaveAttribute("data-slot", "sheet-content");
+    expect(drawer).toHaveClass("fixed");
     expect(screen.getByTestId("editor-surface")).toHaveAttribute("inert");
     expect(within(drawer).getByRole("button", { name: "关闭修改记录" })).toHaveFocus();
     expect(within(drawer).getByText("最新版源文")).toBeVisible();
     expect(within(drawer).getByText("Newest version")).toBeVisible();
 
     fireEvent.click(within(drawer).getByRole("button", { name: "关闭修改记录" }));
-    expect(screen.queryByRole("complementary", { name: "修改记录" })).not.toBeInTheDocument();
-    expect(historyButton).toHaveFocus();
+    expect(screen.queryByRole("dialog", { name: "修改记录" })).not.toBeInTheDocument();
+    await waitFor(() => expect(historyButton).toHaveFocus());
   });
 
   it("shows and restores the complete imported source and target snapshot", async () => {

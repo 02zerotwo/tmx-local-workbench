@@ -66,18 +66,19 @@ export function ConfirmDialog({
             disabled={busy}
             onClick={onCancel}
             title="关闭"
+            variant="ghost"
           >
             <X size={17} />
           </AlertDialogCancel>
         </AlertDialogHeader>
         <AlertDialogFooter className="m-0 flex-row justify-end rounded-none border-0 bg-white px-5 py-4">
-          <AlertDialogCancel disabled={busy} onClick={onCancel}>
+          <AlertDialogCancel disabled={busy} onClick={onCancel} variant="ghost">
             取消
           </AlertDialogCancel>
           <AlertDialogAction
             disabled={busy}
             onClick={onConfirm}
-            variant={tone === "danger" ? "destructive" : "default"}
+            variant={tone === "danger" ? "destructive" : "ghost"}
           >
             {busy ? "处理中..." : confirmLabel}
           </AlertDialogAction>

@@ -59,29 +59,90 @@ const finding: AiAuditFindingRecord = {
 };
 
 describe("AI audit panels", () => {
+  it("keeps AI search as a draft until Enter and previews its own result count", async () => {
+    const queryProject = vi.fn().mockImplementation(async (query) => ({
+      rows: [],
+      total: query.filters.query === "motor" ? 7 : 20,
+      page: 1,
+      pageSize: 100,
+      pageCount: 1,
+    }));
+    const api = {
+      queryProject,
+      listAiAuditJobs: vi.fn().mockResolvedValue([]),
+      startAiAudit: vi.fn(),
+      pauseAiAudit: vi.fn(),
+      resumeAiAudit: vi.fn(),
+      onAiAuditEvent: vi.fn().mockReturnValue(() => undefined),
+    } as Pick<TmxDesktopApi,
+      "queryProject" | "listAiAuditJobs" | "startAiAudit" | "pauseAiAudit" | "resumeAiAudit" | "onAiAuditEvent"
+    >;
+
+    render(
+      <AuditSetupPanel
+        api={api}
+        onReviewReady={() => undefined}
+        projectId="project-1"
+        targetLanguages={["en-US", "de-DE"]}
+      />,
+    );
+
+    const search = await screen.findByRole("searchbox", { name: "AI 审查搜索" });
+    await waitFor(() => expect(queryProject).toHaveBeenCalledTimes(1));
+    queryProject.mockClear();
+
+    fireEvent.change(search, { target: { value: "motor" } });
+    expect(queryProject).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(search, { key: "Enter" });
+    await waitFor(() => expect(queryProject).toHaveBeenCalledWith({
+      projectId: "project-1",
+      filters: {
+        query: "motor",
+        targetLanguage: "",
+        status: "all",
+        duplicateOnly: false,
+      },
+      page: 1,
+      pageSize: 100,
+    }));
+    expect(await screen.findByText("预计审查 7 条")).toBeVisible();
+  });
+
   it("confirms the frozen filter scope before starting", async () => {
     const startAiAudit = vi.fn().mockResolvedValue({ ...job, status: "running" });
     const api = {
+      queryProject: vi.fn().mockResolvedValue({
+        rows: [], total: 20, page: 1, pageSize: 100, pageCount: 1,
+      }),
       listAiAuditJobs: vi.fn().mockResolvedValue([]),
       startAiAudit,
       pauseAiAudit: vi.fn(),
       resumeAiAudit: vi.fn(),
       onAiAuditEvent: vi.fn().mockReturnValue(() => undefined),
     } as Pick<TmxDesktopApi,
-      "listAiAuditJobs" | "startAiAudit" | "pauseAiAudit" | "resumeAiAudit" | "onAiAuditEvent"
+      "queryProject" | "listAiAuditJobs" | "startAiAudit" | "pauseAiAudit" | "resumeAiAudit" | "onAiAuditEvent"
     >;
 
     render(
       <AuditSetupPanel
         api={api}
-        filters={filters}
         onReviewReady={() => undefined}
         projectId="project-1"
-        resultCount={20}
+        targetLanguages={["en-US", "de-DE"]}
       />,
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: "确认范围并开始审查" }));
+    const search = await screen.findByRole("searchbox", { name: "AI 审查搜索" });
+    fireEvent.change(search, { target: { value: "alarm" } });
+    fireEvent.keyDown(search, { key: "Enter" });
+    fireEvent.click(screen.getByRole("combobox", { name: "AI 目标语言" }));
+    fireEvent.click(screen.getByRole("option", { name: "en-US" }));
+    expect(await screen.findByText("预计审查 20 条")).toBeVisible();
+    const startButton = screen.getByRole("button", { name: "确认范围并开始审查" });
+    await waitFor(() => expect(startButton).toBeEnabled());
+    expect(startButton).toHaveAttribute("data-variant", "ghost");
+    fireEvent.click(startButton);
     fireEvent.click(screen.getByRole("button", { name: "开始审查" }));
 
     await waitFor(() => expect(startAiAudit).toHaveBeenCalled());

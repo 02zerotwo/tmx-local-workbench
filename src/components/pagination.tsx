@@ -89,7 +89,7 @@ function PageButton({
       size="icon"
       title={label}
       type="button"
-      variant="outline"
+      variant="ghost"
     >
       {children}
     </Button>

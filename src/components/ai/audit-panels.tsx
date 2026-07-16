@@ -5,7 +5,9 @@ import {
   CheckCheck,
   CirclePause,
   CirclePlay,
+  FilterX,
   Loader2,
+  Search,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -23,6 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +35,7 @@ import type {
   ProjectFilters,
   TmxDesktopApi,
 } from "@/lib/desktop-types";
+import { DEFAULT_PROJECT_FILTERS } from "@/lib/workspace-state";
 
 const AUDIT_CATEGORIES = [
   ["accuracy", "准确性"],
@@ -43,7 +47,7 @@ const AUDIT_CATEGORIES = [
 ] as const;
 
 type SetupApi = Pick<TmxDesktopApi,
-  "listAiAuditJobs" | "startAiAudit" | "pauseAiAudit" | "resumeAiAudit" | "onAiAuditEvent"
+  "queryProject" | "listAiAuditJobs" | "startAiAudit" | "pauseAiAudit" | "resumeAiAudit" | "onAiAuditEvent"
 >;
 
 type ReviewApi = Pick<TmxDesktopApi,
@@ -70,16 +74,21 @@ function statusText(status: AiAuditJobRecord["status"]): string {
 export function AuditSetupPanel({
   api,
   projectId,
-  filters,
-  resultCount,
+  targetLanguages,
   onReviewReady,
 }: {
   api: SetupApi;
   projectId: string;
-  filters: ProjectFilters;
-  resultCount: number;
+  targetLanguages: string[];
   onReviewReady: (job: AiAuditJobRecord) => void;
 }) {
+  const [draftQuery, setDraftQuery] = useState("");
+  const [filters, setFilters] = useState<ProjectFilters>({
+    ...DEFAULT_PROJECT_FILTERS,
+  });
+  const [resultCount, setResultCount] = useState(0);
+  const [countLoading, setCountLoading] = useState(true);
+  const [countError, setCountError] = useState("");
   const [categories, setCategories] = useState<string[]>(
     AUDIT_CATEGORIES.map(([value]) => value),
   );
@@ -90,6 +99,33 @@ export function AuditSetupPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const jobIdRef = useRef<string | null>(null);
+  const countRequestIdRef = useRef(0);
+  const filtersLocked = job?.status === "running" || job?.status === "paused";
+
+  useEffect(() => {
+    const requestId = ++countRequestIdRef.current;
+    setCountLoading(true);
+    setCountError("");
+    api.queryProject({
+      projectId,
+      filters,
+      page: 1,
+      pageSize: 100,
+    }).then((result) => {
+      if (requestId === countRequestIdRef.current) {
+        setResultCount(result.total);
+      }
+    }).catch((queryError: unknown) => {
+      if (requestId === countRequestIdRef.current) {
+        setResultCount(0);
+        setCountError(errorMessage(queryError));
+      }
+    }).finally(() => {
+      if (requestId === countRequestIdRef.current) {
+        setCountLoading(false);
+      }
+    });
+  }, [api, filters, projectId]);
 
   useEffect(() => {
     let active = true;
@@ -97,6 +133,10 @@ export function AuditSetupPanel({
       if (active) {
         jobIdRef.current = jobs[0]?.id ?? null;
         setJob(jobs[0] ?? null);
+        if (jobs[0]?.status === "running" || jobs[0]?.status === "paused") {
+          setFilters(jobs[0].filters);
+          setDraftQuery(jobs[0].filters.query);
+        }
       }
     }).catch((loadError: unknown) => {
       if (active) setError(errorMessage(loadError));
@@ -119,6 +159,21 @@ export function AuditSetupPanel({
     setCategories((current) => checked
       ? [...new Set([...current, category])]
       : current.filter((value) => value !== category));
+  };
+
+  const updateFilters = (update: Partial<ProjectFilters>) => {
+    if (filtersLocked) return;
+    setFilters((current) => ({ ...current, ...update }));
+  };
+
+  const submitSearch = () => {
+    updateFilters({ query: draftQuery.trim() });
+  };
+
+  const clearFilters = () => {
+    if (filtersLocked) return;
+    setDraftQuery("");
+    setFilters({ ...DEFAULT_PROJECT_FILTERS });
   };
 
   const start = async () => {
@@ -159,16 +214,109 @@ export function AuditSetupPanel({
     : 0;
 
   return (
-    <div className="h-full overflow-y-auto p-3">
+    <div className="h-full overflow-y-auto p-4">
       <div className="space-y-4">
         <section>
-          <h3 className="text-sm font-semibold text-slate-900">检查范围</h3>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-            <ScopeStat label="当前筛选" value={`${resultCount.toLocaleString()} 条`} />
-            <ScopeStat label="目标语言" value={filters.targetLanguage || "全部"} />
-            <ScopeStat label="搜索文字" value={filters.query || "无"} />
-            <ScopeStat label="记录状态" value={filters.status === "all" ? "全部" : filters.status === "changed" ? "已修改" : "空译文"} />
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">独立审查范围</h3>
+              <p className="mt-0.5 text-xs text-slate-500">不会改变左侧翻译列表的筛选条件</p>
+            </div>
+            <Button
+              disabled={filtersLocked}
+              onClick={clearFilters}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              <FilterX />
+              清除
+            </Button>
           </div>
+
+          <div className="mt-3 flex gap-1.5">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <Input
+                aria-label="AI 审查搜索"
+                className="h-9 bg-white pl-8"
+                disabled={filtersLocked}
+                onChange={(event) => setDraftQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    submitSearch();
+                  }
+                }}
+                placeholder="搜索源文、译文或编号"
+                role="searchbox"
+                value={draftQuery}
+              />
+            </div>
+            <Button
+              aria-label="搜索 AI 审查范围"
+              className="size-9 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+              disabled={filtersLocked}
+              onClick={submitSearch}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <Search />
+            </Button>
+          </div>
+
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Select
+              disabled={filtersLocked}
+              onValueChange={(value) => updateFilters({
+                targetLanguage: value === "__all__" ? "" : value,
+              })}
+              value={filters.targetLanguage || "__all__"}
+            >
+              <SelectTrigger aria-label="AI 目标语言" className="w-full bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value="__all__">全部目标语言</SelectItem>
+                {targetLanguages.map((language) => (
+                  <SelectItem key={language} value={language}>{language}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              disabled={filtersLocked}
+              onValueChange={(value) => updateFilters({
+                status: value as ProjectFilters["status"],
+              })}
+              value={filters.status}
+            >
+              <SelectTrigger aria-label="AI 翻译状态" className="w-full bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value="all">全部状态</SelectItem>
+                <SelectItem value="changed">仅已修改</SelectItem>
+                <SelectItem value="empty">仅空译文</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mt-2 flex min-h-10 items-center gap-3 rounded-md border border-slate-200 bg-white px-3">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+              <Checkbox
+                aria-label="AI 仅重复项"
+                checked={filters.duplicateOnly}
+                disabled={filtersLocked}
+                onCheckedChange={(checked) => updateFilters({ duplicateOnly: checked === true })}
+              />
+              仅重复项
+            </label>
+            <span className="ml-auto text-xs font-medium tabular-nums text-slate-700" role="status">
+              {countLoading ? "正在统计..." : `预计审查 ${resultCount.toLocaleString()} 条`}
+            </span>
+          </div>
+          {countError ? <p className="mt-2 text-xs text-red-700" role="alert">{countError}</p> : null}
         </section>
 
         <section className="border-t border-slate-200 pt-3">
@@ -217,7 +365,7 @@ export function AuditSetupPanel({
               <span>{job.findingItems.toLocaleString()} 条有问题，{job.failedItems.toLocaleString()} 条失败</span>
             </div>
             {job.status === "running" || job.status === "paused" ? (
-              <Button className="w-full" disabled={busy} onClick={() => void pauseOrResume()} variant="outline">
+              <Button className="w-full" disabled={busy} onClick={() => void pauseOrResume()} variant="ghost">
                 {job.status === "paused" ? <CirclePlay /> : <CirclePause />}
                 {job.status === "paused" ? "继续审查" : "暂停审查"}
               </Button>
@@ -228,8 +376,9 @@ export function AuditSetupPanel({
         {error ? <p className="text-xs text-red-700" role="alert">{error}</p> : null}
         <Button
           className="w-full"
-          disabled={busy || categories.length === 0 || resultCount === 0 || job?.status === "running"}
+          disabled={busy || countLoading || Boolean(countError) || categories.length === 0 || resultCount === 0 || filtersLocked}
           onClick={() => setConfirming(true)}
+          variant="ghost"
         >
           <ShieldCheck />
           确认范围并开始审查
@@ -241,12 +390,12 @@ export function AuditSetupPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>确认开始 AI 审查</AlertDialogTitle>
             <AlertDialogDescription>
-              将冻结当前 {resultCount.toLocaleString()} 条筛选结果并逐条检查。AI 只暂存建议，完成后仍需你最终确认才会写入数据库。
+              将冻结 AI 面板当前筛选出的 {resultCount.toLocaleString()} 条结果并逐条检查。AI 只暂存建议，完成后仍需你最终确认才会写入数据库。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction disabled={busy} onClick={() => void start()}>
+            <AlertDialogCancel variant="ghost">取消</AlertDialogCancel>
+            <AlertDialogAction disabled={busy} onClick={() => void start()} variant="ghost">
               {busy ? <Loader2 className="animate-spin" /> : null}
               开始审查
             </AlertDialogAction>
@@ -359,10 +508,10 @@ export function AuditReviewPanel({
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2">
         <span className="text-xs font-medium text-slate-700">{findings.length} 条建议</span>
-        <Button className="ml-auto" disabled={busy} onClick={() => void acceptAll()} size="sm" variant="outline">
+        <Button className="ml-auto" disabled={busy} onClick={() => void acceptAll()} size="sm" variant="ghost">
           <CheckCheck />全部接受可修改项
         </Button>
-        <Button disabled={busy || acceptedCount === 0 || job.status === "applied"} onClick={() => setConfirming(true)} size="sm">
+        <Button className="text-blue-700 hover:bg-blue-50 hover:text-blue-800" disabled={busy || acceptedCount === 0 || job.status === "applied"} onClick={() => setConfirming(true)} size="sm" variant="ghost">
           确认应用 {acceptedCount} 条
         </Button>
       </div>
@@ -392,10 +541,10 @@ export function AuditReviewPanel({
               ) : null}
             </div>
             <div className="mt-2 flex items-center gap-1">
-              <Button aria-label="接受建议" disabled={busy || !finding.suggestedTargetText} onClick={() => void decide(finding, "accepted")} size="sm" variant="outline">
+              <Button aria-label="接受建议" disabled={busy || !finding.suggestedTargetText} onClick={() => void decide(finding, "accepted")} size="sm" variant="ghost">
                 <Check />接受
               </Button>
-              <Button disabled={busy || !finding.suggestedTargetText} onClick={() => void decide(finding, "edited", drafts[finding.id])} size="sm" variant="outline">
+              <Button disabled={busy || !finding.suggestedTargetText} onClick={() => void decide(finding, "edited", drafts[finding.id])} size="sm" variant="ghost">
                 保存修改
               </Button>
               <Button aria-label="拒绝建议" disabled={busy} onClick={() => void decide(finding, "rejected")} size="sm" variant="ghost">
@@ -416,23 +565,14 @@ export function AuditReviewPanel({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>返回检查</AlertDialogCancel>
-            <AlertDialogAction disabled={busy} onClick={() => void apply()}>
+            <AlertDialogCancel variant="ghost">返回检查</AlertDialogCancel>
+            <AlertDialogAction disabled={busy} onClick={() => void apply()} variant="ghost">
               {busy ? <Loader2 className="animate-spin" /> : null}
               确认写入数据库
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-function ScopeStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-md border border-slate-200 bg-white px-2.5 py-2">
-      <div className="text-[11px] text-slate-400">{label}</div>
-      <div className="mt-0.5 truncate font-medium text-slate-800" title={value}>{value}</div>
     </div>
   );
 }
