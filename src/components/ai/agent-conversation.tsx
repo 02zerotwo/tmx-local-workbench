@@ -2,12 +2,11 @@
 
 import {
   Bot,
-  Check,
   History,
+  Loader2,
   MessageSquarePlus,
   Send,
   Square,
-  Wrench,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -29,17 +28,13 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "@/components/ai-elements/reasoning";
-import { Tool, ToolHeader } from "@/components/ai-elements/tool";
 import { AssistantMessageParts } from "@/components/ai/assistant-message-parts";
 import { MarkdownResponse } from "@/components/ai/markdown-response";
+import { RevisionReviewList } from "@/components/ai/revision-review-list";
 import { SessionHistoryDrawer } from "@/components/ai/session-history-drawer";
 import { Button } from "@/components/ui/button";
 import type {
+  AiAgentEvent,
   AiAgentRevisionRecord,
   AiMessagePart,
   AiMessageRecord,
@@ -67,10 +62,57 @@ type AgentConversationProps = {
   onApplied?: () => void;
 };
 
-type ToolState = {
-  name: string;
-  status: "running" | "complete" | "error";
-};
+type AgentRuntimeEvent = AiAgentEvent["event"];
+
+/**
+ * 把按执行顺序到达的流事件归约成一个有序片段数组：与上一段同类型则追加，
+ * 否则新起一段。这样文字与工具调用严格按调用顺序排列，不再出现错位。
+ */
+function reduceLivePart(
+  parts: AiMessagePart[],
+  event: AgentRuntimeEvent,
+): AiMessagePart[] {
+  if (event.type === "text-delta" || event.type === "reasoning-delta") {
+    const type = event.type === "text-delta" ? "text" : "reasoning";
+    const last = parts.at(-1);
+    if (last && last.type === type) {
+      return [...parts.slice(0, -1), { type, text: last.text + event.delta }];
+    }
+    return [...parts, { type, text: event.delta }];
+  }
+  if (event.type === "tool") {
+    if (event.status === "running") {
+      if (
+        parts.some(
+          (part) => part.type === "tool" && part.toolCallId === event.toolCallId,
+        )
+      ) {
+        return parts;
+      }
+      return [
+        ...parts,
+        {
+          type: "tool",
+          toolCallId: event.toolCallId,
+          toolName: event.name,
+          state: "input-available",
+          input: event.input,
+        },
+      ];
+    }
+    return parts.map((part) =>
+      part.type === "tool" && part.toolCallId === event.toolCallId
+        ? {
+            ...part,
+            state:
+              event.status === "error" ? "output-error" : "output-available",
+            output: event.output,
+          }
+        : part,
+    );
+  }
+  return parts;
+}
 
 function getText(parts: AiMessagePart[]): string {
   return parts
@@ -100,21 +142,14 @@ export function AgentConversation({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [streamedText, setStreamedText] = useState("");
-  const [reasoning, setReasoning] = useState("");
-  const [tools, setTools] = useState<ToolState[]>([]);
+  const [liveParts, setLiveParts] = useState<AiMessagePart[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [busyRevisionId, setBusyRevisionId] = useState<string | null>(null);
-  const [bulkBusy, setBulkBusy] = useState(false);
+  const [revisionBusy, setRevisionBusy] = useState(false);
   const activeSessionIdRef = useRef<string | null>(null);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions],
-  );
-  const revisionsById = useMemo(
-    () => new Map(revisions.map((revision) => [revision.id, revision])),
-    [revisions],
   );
   const pendingRevisions = useMemo(
     () => revisions.filter((revision) => revision.status === "pending"),
@@ -191,26 +226,15 @@ export function AgentConversation({
     () =>
       api.onAiAgentEvent(({ sessionId, event }) => {
         if (sessionId !== activeSessionIdRef.current) return;
-        if (event.type === "text-delta") {
-          setStreamedText((current) => current + event.delta);
-        } else if (event.type === "reasoning-delta") {
-          setReasoning((current) => current + event.delta);
-        } else if (event.type === "tool") {
-          setTools((current) => {
-            const withoutCurrent = current.filter(
-              (item) => item.name !== event.name,
-            );
-            return [
-              ...withoutCurrent,
-              { name: event.name, status: event.status },
-            ];
-          });
-        } else if (event.type === "revision") {
+        if (event.type === "revision") {
           setRevisions((current) => [
             ...current.filter((item) => item.id !== event.revision.id),
             event.revision,
           ]);
+          return;
         }
+        if (event.type === "status") return;
+        setLiveParts((current) => reduceLivePart(current, event));
       }),
     [api],
   );
@@ -237,9 +261,7 @@ export function AgentConversation({
 
     setSending(true);
     setError("");
-    setStreamedText("");
-    setReasoning("");
-    setTools([]);
+    setLiveParts([]);
 
     try {
       const session =
@@ -265,9 +287,7 @@ export function AgentConversation({
       await loadMessages(session.id);
       await loadRevisions(session.id);
       await loadSessions();
-      setStreamedText("");
-      setReasoning("");
-      setTools([]);
+      setLiveParts([]);
     } catch (sendError) {
       setError(getErrorMessage(sendError));
       if (activeSessionIdRef.current) {
@@ -293,9 +313,7 @@ export function AgentConversation({
     if (!sessionId || sending) return;
     setSending(true);
     setError("");
-    setStreamedText("");
-    setReasoning("");
-    setTools([]);
+    setLiveParts([]);
     try {
       await api.retryAiMessage(sessionId, "main");
       await loadMessages(sessionId);
@@ -305,18 +323,15 @@ export function AgentConversation({
       setError(getErrorMessage(retryError));
       await loadMessages(sessionId).catch(() => undefined);
     } finally {
-      setStreamedText("");
-      setReasoning("");
-      setTools([]);
+      setLiveParts([]);
       setSending(false);
     }
   };
 
-  const applyRevisions = async (ids: string[], bulk: boolean) => {
+  const applyRevisions = async (ids: string[]) => {
     const sessionId = activeSessionIdRef.current;
     if (!sessionId || ids.length === 0) return;
-    if (bulk) setBulkBusy(true);
-    else setBusyRevisionId(ids[0]);
+    setRevisionBusy(true);
     setError("");
     try {
       await api.applyAiAgentRevisions(sessionId, ids);
@@ -325,23 +340,22 @@ export function AgentConversation({
     } catch (applyError) {
       setError(getErrorMessage(applyError));
     } finally {
-      setBusyRevisionId(null);
-      setBulkBusy(false);
+      setRevisionBusy(false);
     }
   };
 
-  const ignoreRevision = async (revisionId: string) => {
+  const ignoreRevisions = async (ids: string[]) => {
     const sessionId = activeSessionIdRef.current;
-    if (!sessionId) return;
-    setBusyRevisionId(revisionId);
+    if (!sessionId || ids.length === 0) return;
+    setRevisionBusy(true);
     setError("");
     try {
-      await api.ignoreAiAgentRevision(revisionId);
+      await Promise.all(ids.map((id) => api.ignoreAiAgentRevision(id)));
       await loadRevisions(sessionId);
     } catch (ignoreError) {
       setError(getErrorMessage(ignoreError));
     } finally {
-      setBusyRevisionId(null);
+      setRevisionBusy(false);
     }
   };
 
@@ -392,17 +406,13 @@ export function AgentConversation({
                 from={message.role === "user" ? "user" : "assistant"}
                 key={message.id}
               >
-                <MessageContent className={message.role === "user" ? undefined : "w-full"}>
+                <MessageContent
+                  className={message.role === "user" ? undefined : "w-full"}
+                >
                   {message.role === "user" ? (
                     <MarkdownResponse content={getText(message.parts)} />
                   ) : (
-                    <AssistantMessageParts
-                      busyRevisionId={busyRevisionId}
-                      onApplyRevision={(id) => void applyRevisions([id], false)}
-                      onIgnoreRevision={(id) => void ignoreRevision(id)}
-                      parts={message.parts}
-                      revisionsById={revisionsById}
-                    />
+                    <AssistantMessageParts parts={message.parts} />
                   )}
                 </MessageContent>
               </Message>
@@ -410,33 +420,11 @@ export function AgentConversation({
             {sending ? (
               <Message from="assistant">
                 <MessageContent className="w-full">
-                  {reasoning ? (
-                    <Reasoning isStreaming>
-                      <ReasoningTrigger getThinkingMessage={() => "正在思考"} />
-                      <ReasoningContent>{reasoning}</ReasoningContent>
-                    </Reasoning>
-                  ) : null}
-                  {tools.map((tool) => (
-                    <Tool key={tool.name}>
-                      <ToolHeader
-                        state={
-                          tool.status === "complete"
-                            ? "output-available"
-                            : tool.status === "error"
-                              ? "output-error"
-                              : "input-available"
-                        }
-                        title={tool.name}
-                        toolName={tool.name}
-                        type="dynamic-tool"
-                      />
-                    </Tool>
-                  ))}
-                  {streamedText ? (
-                    <MarkdownResponse content={streamedText} streaming />
+                  {liveParts.length > 0 ? (
+                    <AssistantMessageParts parts={liveParts} streaming />
                   ) : (
                     <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Wrench className="animate-pulse" size={14} />
+                      <Loader2 className="animate-spin" size={14} />
                       正在准备检查
                     </div>
                   )}
@@ -472,27 +460,12 @@ export function AgentConversation({
         ) : null}
 
         {pendingRevisions.length > 0 ? (
-          <div className="flex items-center gap-2 border-t border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            <span className="min-w-0 flex-1">
-              {pendingRevisions.length} 条修改建议待审阅
-            </span>
-            <Button
-              className="h-7 gap-1 px-2 text-amber-800 hover:bg-amber-100"
-              disabled={bulkBusy || busyRevisionId !== null}
-              onClick={() =>
-                void applyRevisions(
-                  pendingRevisions.map((revision) => revision.id),
-                  true,
-                )
-              }
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              <Check size={13} />
-              全部应用
-            </Button>
-          </div>
+          <RevisionReviewList
+            busy={revisionBusy}
+            onApply={(ids) => void applyRevisions(ids)}
+            onIgnore={(ids) => void ignoreRevisions(ids)}
+            revisions={pendingRevisions}
+          />
         ) : null}
 
         <div className="border-t border-slate-200 bg-white p-2">

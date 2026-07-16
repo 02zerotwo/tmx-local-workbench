@@ -7,8 +7,7 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { Tool, ToolHeader } from "@/components/ai-elements/tool";
 import { MarkdownResponse } from "@/components/ai/markdown-response";
-import { RevisionProposalCard } from "@/components/ai/revision-proposal-card";
-import type { AiAgentRevisionRecord, AiMessagePart } from "@/lib/desktop-types";
+import type { AiMessagePart } from "@/lib/desktop-types";
 
 const TOOL_LABEL: Record<string, string> = {
   searchTranslationUnits: "搜索译文",
@@ -18,35 +17,29 @@ const TOOL_LABEL: Record<string, string> = {
 
 type AssistantMessagePartsProps = {
   parts: AiMessagePart[];
-  revisionsById: Map<string, AiAgentRevisionRecord>;
-  busyRevisionId: string | null;
+  /** true 时表示这是正在流式产生的消息，推理块保持展开动画。 */
   streaming?: boolean;
-  onApplyRevision: (revisionId: string) => void;
-  onIgnoreRevision: (revisionId: string) => void;
 };
 
-function revisionIdFromOutput(output: unknown): string | null {
+function toolRowId(input: unknown): string | null {
   if (
-    output
-    && typeof output === "object"
-    && "staged" in output
-    && (output as { staged?: unknown }).staged === true
-    && "revisionId" in output
-    && typeof (output as { revisionId?: unknown }).revisionId === "string"
+    input
+    && typeof input === "object"
+    && "rowId" in input
+    && typeof (input as { rowId?: unknown }).rowId === "string"
   ) {
-    return (output as { revisionId: string }).revisionId;
+    return (input as { rowId: string }).rowId;
   }
   return null;
 }
 
-/** 按顺序渲染助手消息的片段：文本 / 推理 / 工具调用 / 修改建议卡片。 */
+/**
+ * 按数组顺序渲染助手消息的片段：文本 / 推理 / 工具调用。
+ * 实时流与历史消息共用此组件，保证工具调用与文字严格按执行顺序呈现。
+ */
 export function AssistantMessageParts({
   parts,
-  revisionsById,
-  busyRevisionId,
   streaming = false,
-  onApplyRevision,
-  onIgnoreRevision,
 }: AssistantMessagePartsProps) {
   return (
     <>
@@ -59,34 +52,20 @@ export function AssistantMessageParts({
         }
         if (part.type === "reasoning") {
           return part.text.trim() ? (
-            <Reasoning key={key}>
+            <Reasoning defaultOpen isStreaming={streaming} key={key}>
               <ReasoningTrigger getThinkingMessage={() => "推理过程"} />
               <ReasoningContent>{part.text}</ReasoningContent>
             </Reasoning>
           ) : null;
         }
 
-        if (part.toolName === "proposeRevision") {
-          const revisionId = revisionIdFromOutput(part.output);
-          const revision = revisionId ? revisionsById.get(revisionId) : undefined;
-          if (revision) {
-            return (
-              <RevisionProposalCard
-                busy={busyRevisionId === revision.id}
-                key={key}
-                onApply={onApplyRevision}
-                onIgnore={onIgnoreRevision}
-                revision={revision}
-              />
-            );
-          }
-        }
-
+        const rowId = toolRowId(part.input);
+        const label = TOOL_LABEL[part.toolName] ?? part.toolName;
         return (
           <Tool key={key}>
             <ToolHeader
               state={part.state}
-              title={TOOL_LABEL[part.toolName] ?? part.toolName}
+              title={rowId ? `${label} · ${rowId}` : label}
               toolName={part.toolName}
               type="dynamic-tool"
             />
