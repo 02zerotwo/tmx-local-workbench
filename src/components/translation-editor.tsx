@@ -554,12 +554,10 @@ export const TranslationEditor = forwardRef<
           </div>
           <Button
             aria-label="修改记录"
-            className="h-9 shrink-0 px-2 text-xs text-slate-700"
+            className="h-9 shrink-0 px-2"
             onClick={() => setHistoryOpen(true)}
             ref={historyButtonRef}
-            size="sm"
             type="button"
-            variant="ghost"
           >
             <History size={14} />
             记录
@@ -991,23 +989,21 @@ export const TranslationEditor = forwardRef<
           <ArrowRight size={16} />
         </TooltipIconButton>
         <Button
-          className="h-9 min-w-0 gap-1 px-2 text-xs text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+          className="h-9 min-w-0 gap-2"
           disabled={interactionLocked}
           onClick={() => void saveExplicitly()}
-          size="sm"
           type="button"
-          variant="ghost"
+          size="sm"
         >
           <Save className="shrink-0" size={14} />
           <span className="truncate">立即保存</span>
         </Button>
         <Button
-          className="h-9 min-w-0 gap-1 px-2 text-xs text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+          className="h-9 min-w-0 gap-2 px-2"
           disabled={interactionLocked || !canNext}
           onClick={() => void saveAndNext()}
-          size="sm"
           type="button"
-          variant="ghost"
+          size="sm"
         >
           <Save className="shrink-0" size={14} />
           <span className="truncate">保存并下一条</span>

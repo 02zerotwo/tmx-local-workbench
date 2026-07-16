@@ -196,7 +196,7 @@ export function TranslationTable({
                         </Badge>
                       ) : row.changed ? (
                         <Badge
-                          className="gap-1 border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950 dark:text-amber-400"
+                          className="gap-1 border-amber-200 bg-amber-50 text-amber-100 dark:border-amber-900/60 dark:bg-amber-950 dark:text-amber-400"
                           variant="outline"
                         >
                           <PencilLine />
