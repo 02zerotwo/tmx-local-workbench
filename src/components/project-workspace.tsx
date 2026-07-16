@@ -10,7 +10,6 @@ import {
   Languages,
   Loader2,
   Search,
-  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -38,16 +37,9 @@ import {
 } from "@/lib/workspace-state";
 import { Pagination } from "./pagination";
 import { AiModePanel } from "./ai/ai-mode-panel";
+import { WorkspaceDetailPanel } from "./workspace-detail-panel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import {
   InputGroup,
   InputGroupAddon,
@@ -115,7 +107,6 @@ export function ProjectWorkspace({
   const [historyError, setHistoryError] = useState("");
   const [editorNonce, setEditorNonce] = useState(0);
   const [error, setError] = useState("");
-  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
   const requestIdRef = useRef(0);
   const lastSuccessfulPageRef = useRef(1);
@@ -440,15 +431,6 @@ export function ProjectWorkspace({
           </span>
         </div>
         <Button
-          className="h-9 gap-1.5 text-primary hover:bg-primary/10 hover:text-primary"
-          onClick={() => setAiDrawerOpen(true)}
-          type="button"
-          variant="ghost"
-        >
-          <Sparkles size={16} />
-          AI 助手
-        </Button>
-        <Button
           className="h-9 text-slate-700"
           disabled={exporting}
           onClick={() => void exportProject("filtered")}
@@ -689,78 +671,48 @@ export function ProjectWorkspace({
           <ResizableHandle aria-label="调整工作区宽度" withHandle />
 
           <ResizablePanel defaultSize="50" id="detail-workspace" minSize="35%">
-            <div
-              className="flex h-full min-h-0 flex-col bg-slate-50"
-              data-testid="workspace-detail-panel"
-            >
-              <div className="min-h-0 flex-1 [&>aside]:h-full [&>aside]:border-l-0">
-                {selectedRow ? (
-                  <TranslationEditor
-                    canNext={canNext}
-                    canPrevious={canPrevious}
-                    editingLocked={exporting || pageTransitioning}
-                    history={history}
-                    historyError={historyError}
-                    historyLoading={historyLoading}
-                    key={`${selectedRow.rowId}:${editorNonce}`}
-                    onNext={() => navigateEditor("next")}
-                    onCopyText={api.copyText}
-                    onPrevious={() => navigateEditor("previous")}
-                    onRestoreHistory={restoreHistory}
-                    onSave={saveTranslation}
-                    onSaved={applySavedRow}
-                    ref={editorRef}
-                    row={selectedRow}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
-                    选择一条翻译开始编辑
-                  </div>
-                )}
-              </div>
-            </div>
+            <WorkspaceDetailPanel
+              aiPanel={
+                <AiModePanel
+                  api={api}
+                  onApplied={() =>
+                    setDataRefreshNonce((current) => current + 1)
+                  }
+                  projectId={project.id}
+                  targetLanguages={project.targetLanguages}
+                />
+              }
+              editor={
+                <div className="min-h-0 flex-1 [&>aside]:h-full [&>aside]:border-l-0">
+                  {selectedRow ? (
+                    <TranslationEditor
+                      canNext={canNext}
+                      canPrevious={canPrevious}
+                      editingLocked={exporting || pageTransitioning}
+                      history={history}
+                      historyError={historyError}
+                      historyLoading={historyLoading}
+                      key={`${selectedRow.rowId}:${editorNonce}`}
+                      onNext={() => navigateEditor("next")}
+                      onCopyText={api.copyText}
+                      onPrevious={() => navigateEditor("previous")}
+                      onRestoreHistory={restoreHistory}
+                      onSave={saveTranslation}
+                      onSaved={applySavedRow}
+                      ref={editorRef}
+                      row={selectedRow}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
+                      选择一条翻译开始编辑
+                    </div>
+                  )}
+                </div>
+              }
+            />
           </ResizablePanel>
         </ResizablePanelGroup>
       </section>
-
-      <Drawer
-        direction="right"
-        onOpenChange={setAiDrawerOpen}
-        open={aiDrawerOpen}
-      >
-        <DrawerContent className="w-[min(720px,60vw)] gap-0 sm:max-w-[80vw]">
-          <DrawerHeader className="flex h-14 shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-0 text-left">
-            <div className="min-w-0">
-              <DrawerTitle className="text-sm font-semibold text-slate-900">
-                AI 助手
-              </DrawerTitle>
-              <DrawerDescription className="truncate text-xs text-slate-500">
-                {project.name}
-              </DrawerDescription>
-            </div>
-            <DrawerClose asChild>
-              <Button
-                aria-label="关闭 AI 助手"
-                className="size-8 shrink-0 text-slate-500"
-                size="icon"
-                title="关闭 AI 助手"
-                type="button"
-                variant="ghost"
-              >
-                <X size={16} />
-              </Button>
-            </DrawerClose>
-          </DrawerHeader>
-          <div className="min-h-0 flex-1">
-            <AiModePanel
-              api={api}
-              onApplied={() => setDataRefreshNonce((current) => current + 1)}
-              projectId={project.id}
-              targetLanguages={project.targetLanguages}
-            />
-          </div>
-        </DrawerContent>
-      </Drawer>
     </main>
   );
 }

@@ -38,8 +38,8 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { Tool, ToolHeader } from "@/components/ai-elements/tool";
 import { MarkdownResponse } from "@/components/ai/markdown-response";
+import { SessionHistoryDrawer } from "@/components/ai/session-history-drawer";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type {
   AiMessageRecord,
   AiSessionRecord,
@@ -102,6 +102,7 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
   const [streamedText, setStreamedText] = useState("");
   const [reasoning, setReasoning] = useState("");
   const [tools, setTools] = useState<ToolState[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const activeSessionIdRef = useRef<string | null>(null);
 
   const activeSession = useMemo(
@@ -261,47 +262,39 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
   };
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden rounded-md border border-slate-200 bg-white">
-      <aside className="flex w-36 shrink-0 flex-col border-r border-slate-200 bg-slate-50">
-        <div className="flex h-10 items-center gap-2 border-b border-slate-200 px-2 text-xs font-semibold text-slate-700">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-slate-200 bg-white">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50 px-2">
+        <Button
+          aria-label="历史会话"
+          className="h-7 gap-1.5 px-2 text-xs text-slate-600"
+          onClick={() => setHistoryOpen(true)}
+          size="sm"
+          title="历史会话"
+          type="button"
+          variant="ghost"
+        >
           <History size={14} />
-          历史会话
-          <Button
-            aria-label="新建会话"
-            className="ml-auto"
-            onClick={() => void createSession()}
-            size="icon-xs"
-            title="新建会话"
-            variant="ghost"
-          >
-            <MessageSquarePlus />
-          </Button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-          {sessions.length === 0 && !loading ? (
-            <p className="px-2 py-3 text-xs leading-5 text-slate-400">发送消息后自动创建会话</p>
-          ) : null}
-          {sessions.map((session) => (
-            <Button
-              className={cn(
-                "mb-1 h-auto w-full justify-start whitespace-normal px-2 py-2 text-left text-xs leading-4",
-                session.id === activeSessionId && "bg-white text-blue-700 shadow-sm",
-              )}
-              key={session.id}
-              onClick={() => {
-                activeSessionIdRef.current = session.id;
-                setActiveSessionId(session.id);
-              }}
-              title={session.title}
-              variant="ghost"
-            >
-              <span className="line-clamp-2">{session.title}</span>
-            </Button>
-          ))}
-        </div>
-      </aside>
+          历史
+        </Button>
+        <span
+          className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700"
+          title={activeSession?.title}
+        >
+          {activeSession?.title ?? "新会话"}
+        </span>
+        <Button
+          aria-label="新建会话"
+          onClick={() => void createSession()}
+          size="icon-sm"
+          title="新建会话"
+          type="button"
+          variant="ghost"
+        >
+          <MessageSquarePlus />
+        </Button>
+      </div>
 
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Conversation className="min-h-0">
           <ConversationContent className="gap-5 p-3">
             {!loading && messages.length === 0 && !sending ? (
@@ -399,6 +392,23 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
           </PromptInput>
         </div>
       </section>
+
+      <SessionHistoryDrawer
+        activeSessionId={activeSessionId}
+        loading={loading}
+        onCreate={() => {
+          void createSession();
+          setHistoryOpen(false);
+        }}
+        onOpenChange={setHistoryOpen}
+        onSelect={(sessionId) => {
+          activeSessionIdRef.current = sessionId;
+          setActiveSessionId(sessionId);
+          setHistoryOpen(false);
+        }}
+        open={historyOpen}
+        sessions={sessions}
+      />
     </div>
   );
 }
