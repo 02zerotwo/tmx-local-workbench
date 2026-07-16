@@ -728,7 +728,7 @@ export function ProjectWorkspace({
         onOpenChange={setAiDrawerOpen}
         open={aiDrawerOpen}
       >
-        <DrawerContent className="w-[min(720px,60vw)] gap-0 sm:max-w-[720px]">
+        <DrawerContent className="w-[min(720px,60vw)] gap-0 sm:max-w-[80vw]">
           <DrawerHeader className="flex h-14 shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-0 text-left">
             <div className="min-w-0">
               <DrawerTitle className="text-sm font-semibold text-slate-900">
