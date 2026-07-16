@@ -1,7 +1,14 @@
 "use client";
 
-import { ChevronDown, ClipboardCheck, Loader2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Loader2,
+  SquarePen,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { TranslationDiff } from "@/components/ai/translation-diff";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,6 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { AiAgentRevisionRecord } from "@/lib/desktop-types";
 
@@ -21,9 +29,18 @@ type RevisionReviewListProps = {
   onIgnore: (ids: string[]) => void;
 };
 
+const CATEGORY_LABEL: Record<string, string> = {
+  accuracy: "准确性",
+  fluency: "流畅度",
+  terminology: "术语",
+  consistency: "一致性",
+  punctuation: "标点",
+  formatting: "格式",
+};
+
 /**
- * 会话底部的待审阅面板：逐条可展开查看，勾选“修改范围”，确认后应用所选。
- * 不会自动弹出全部内容，也不会未经勾选就写库。
+ * 会话底部的待审阅面板：逐条可展开查看改动对比，勾选“修改范围”，确认后应用所选。
+ * 不自动展开全部内容，也不会未经勾选就写库。
  */
 export function RevisionReviewList({
   revisions,
@@ -37,12 +54,13 @@ export function RevisionReviewList({
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set(ids));
 
-  // 建议集合变化时（新一轮生成 / 应用后移除）默认全选当前待审阅项。
   useEffect(() => {
     setSelected(new Set(signature ? signature.split(",") : []));
   }, [signature]);
 
   const selectedIds = ids.filter((id) => selected.has(id));
+  const allSelected = ids.length > 0 && selectedIds.length === ids.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
 
   const toggleSelect = (id: string, checked: boolean) => {
     setSelected((current) => {
@@ -51,6 +69,9 @@ export function RevisionReviewList({
       else next.delete(id);
       return next;
     });
+  };
+  const toggleAll = (checked: boolean) => {
+    setSelected(checked ? new Set(ids) : new Set());
   };
   const toggleRow = (id: string) => {
     setOpenRows((current) => {
@@ -63,20 +84,23 @@ export function RevisionReviewList({
 
   return (
     <Collapsible
-      className="border-t border-amber-200 bg-amber-50/50"
+      className="border-t bg-muted/30"
       onOpenChange={setPanelOpen}
       open={panelOpen}
     >
       <CollapsibleTrigger asChild>
         <button
-          className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-amber-800"
+          className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-foreground"
           type="button"
         >
-          <ClipboardCheck size={14} />
-          待审阅修改建议 ({revisions.length})
+          <SquarePen className="text-primary" size={14} />
+          待审阅修改建议
+          <Badge className="rounded-full px-1.5" variant="secondary">
+            {revisions.length}
+          </Badge>
           <ChevronDown
             className={cn(
-              "ml-auto transition-transform",
+              "ml-auto text-muted-foreground transition-transform",
               panelOpen && "rotate-180",
             )}
             size={14}
@@ -85,107 +109,106 @@ export function RevisionReviewList({
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        <div className="max-h-64 overflow-y-auto border-t border-amber-100 bg-white">
-          {revisions.map((revision) => {
-            const open = openRows.has(revision.id);
-            return (
-              <div
-                className="border-b border-slate-100 last:border-b-0"
-                key={revision.id}
-              >
-                <div className="flex items-center gap-2 px-3 py-2">
-                  <Checkbox
-                    aria-label={`选择 ${revision.rowId}`}
-                    checked={selected.has(revision.id)}
-                    disabled={busy}
-                    onCheckedChange={(checked) =>
-                      toggleSelect(revision.id, checked === true)
-                    }
-                  />
-                  <button
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-xs"
-                    onClick={() => toggleRow(revision.id)}
-                    type="button"
-                  >
-                    <Badge
-                      className="shrink-0 font-normal text-muted-foreground"
-                      variant="outline"
-                    >
-                      {revision.category}
-                    </Badge>
-                    <span className="min-w-0 flex-1 truncate text-slate-700">
-                      {revision.rowId}：{revision.suggestedTargetText}
-                    </span>
-                    <ChevronDown
-                      className={cn(
-                        "shrink-0 text-slate-400 transition-transform",
-                        open && "rotate-180",
-                      )}
-                      size={13}
-                    />
-                  </button>
-                </div>
-                {open ? (
-                  <div className="space-y-2 px-3 pb-3 pl-9 text-xs">
-                    <div>
-                      <p className="mb-0.5 text-[11px] font-medium text-slate-400">
-                        原译文
-                      </p>
-                      <p className="whitespace-pre-wrap break-words text-slate-500 line-through decoration-slate-300">
-                        {revision.originalTargetText || "（空译文）"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="mb-0.5 text-[11px] font-medium text-slate-400">
-                        建议译文
-                      </p>
-                      <p className="whitespace-pre-wrap break-words font-medium text-slate-900">
-                        {revision.suggestedTargetText}
-                      </p>
-                    </div>
-                    {revision.reason ? (
-                      <p className="rounded bg-slate-50 px-2 py-1.5 leading-5 text-slate-600">
-                        {revision.reason}
-                        <span className="ml-1 text-slate-400">
-                          （置信度 {Math.round(revision.confidence * 100)}%）
-                        </span>
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-2 border-t border-amber-100 bg-amber-50/50 px-3 py-2 text-xs text-amber-800">
-          <span className="min-w-0 flex-1">
-            已选 {selectedIds.length} / {revisions.length} 条
-          </span>
+        <div className="flex items-center gap-2 px-3 pb-1.5">
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+            <Checkbox
+              aria-label="全选"
+              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              disabled={busy}
+              onCheckedChange={(checked) => toggleAll(checked === true)}
+            />
+            已选 {selectedIds.length}/{revisions.length}
+          </label>
           <Button
-            className="h-7 gap-1 px-2 text-slate-500 hover:text-slate-700"
+            className="ml-auto h-7 px-2 text-xs text-muted-foreground"
             disabled={busy || selectedIds.length === 0}
             onClick={() => onIgnore(selectedIds)}
             size="sm"
             type="button"
             variant="ghost"
           >
+            <X size={13} />
             忽略所选
           </Button>
           <Button
-            className="h-7 gap-1 px-2.5"
+            className="h-7 gap-1 px-2.5 text-xs"
             disabled={busy || selectedIds.length === 0}
             onClick={() => onApply(selectedIds)}
             size="sm"
             type="button"
           >
-            {busy ? (
-              <Loader2 className="animate-spin" size={13} />
-            ) : (
-              <ClipboardCheck size={13} />
-            )}
+            {busy ? <Loader2 className="animate-spin" size={13} /> : <Check size={13} />}
             应用所选
           </Button>
+        </div>
+
+        <div className="max-h-64 overflow-y-auto px-2 pb-2">
+          {revisions.map((revision) => {
+            const open = openRows.has(revision.id);
+            return (
+              <Collapsible
+                className="mb-1.5 overflow-hidden rounded-lg border bg-background last:mb-0"
+                key={revision.id}
+                onOpenChange={() => toggleRow(revision.id)}
+                open={open}
+              >
+                <div className="flex items-center gap-2 px-2.5 py-2">
+                  <Checkbox
+                    aria-label={`选择建议：${revision.sourceText}`}
+                    checked={selected.has(revision.id)}
+                    disabled={busy}
+                    onCheckedChange={(checked) =>
+                      toggleSelect(revision.id, checked === true)
+                    }
+                  />
+                  <CollapsibleTrigger asChild>
+                    <button
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      type="button"
+                    >
+                      <Badge className="shrink-0 rounded-full px-1.5 font-normal" variant="outline">
+                        {CATEGORY_LABEL[revision.category] ?? revision.category}
+                      </Badge>
+                      <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                        {revision.sourceText}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "shrink-0 text-muted-foreground transition-transform",
+                          open && "rotate-180",
+                        )}
+                        size={13}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  <Separator />
+                  <div className="space-y-2 px-2.5 py-2.5">
+                    <div>
+                      <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+                        改动对比
+                      </p>
+                      <div className="rounded-md border bg-muted/30 px-2.5 py-2">
+                        <TranslationDiff
+                          after={revision.suggestedTargetText}
+                          before={revision.originalTargetText}
+                        />
+                      </div>
+                    </div>
+                    {revision.reason ? (
+                      <p className="rounded-md bg-muted/50 px-2.5 py-1.5 text-xs leading-5 text-muted-foreground">
+                        {revision.reason}
+                        <span className="ml-1 tabular-nums opacity-70">
+                          （置信度 {Math.round(revision.confidence * 100)}%）
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
         </div>
       </CollapsibleContent>
     </Collapsible>

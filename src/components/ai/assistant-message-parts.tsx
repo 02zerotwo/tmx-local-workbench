@@ -5,7 +5,13 @@ import {
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
-import { Tool, ToolHeader } from "@/components/ai-elements/tool";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
 import { MarkdownResponse } from "@/components/ai/markdown-response";
 import type { AiMessagePart } from "@/lib/desktop-types";
 
@@ -20,18 +26,6 @@ type AssistantMessagePartsProps = {
   /** true 时表示这是正在流式产生的消息，推理块保持展开动画。 */
   streaming?: boolean;
 };
-
-function toolRowId(input: unknown): string | null {
-  if (
-    input
-    && typeof input === "object"
-    && "rowId" in input
-    && typeof (input as { rowId?: unknown }).rowId === "string"
-  ) {
-    return (input as { rowId: string }).rowId;
-  }
-  return null;
-}
 
 /**
  * 按数组顺序渲染助手消息的片段：文本 / 推理 / 工具调用。
@@ -59,16 +53,21 @@ export function AssistantMessageParts({
           ) : null;
         }
 
-        const rowId = toolRowId(part.input);
         const label = TOOL_LABEL[part.toolName] ?? part.toolName;
         return (
           <Tool key={key}>
             <ToolHeader
               state={part.state}
-              title={rowId ? `${label} · ${rowId}` : label}
+              title={label}
               toolName={part.toolName}
               type="dynamic-tool"
             />
+            <ToolContent>
+              {part.input !== undefined ? <ToolInput input={part.input} /> : null}
+              {part.output !== undefined || part.errorText ? (
+                <ToolOutput errorText={part.errorText} output={part.output} />
+              ) : null}
+            </ToolContent>
           </Tool>
         );
       })}

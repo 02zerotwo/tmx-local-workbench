@@ -205,8 +205,8 @@ describe("AgentConversation", () => {
     render(<AgentConversation api={api} projectId="project-1" />);
 
     expect(await screen.findByText(/待审阅修改建议/)).toBeVisible();
-    // The suggested text is visible in the review panel row summary (all selected by default).
-    expect(await screen.findByText(/Reset the alarm now/)).toBeVisible();
+    // Each row is identified by its source text (no internal IDs); all selected by default.
+    expect(await screen.findByText("报警复位步骤")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "应用所选" }));
     await waitFor(() =>
