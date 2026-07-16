@@ -363,21 +363,20 @@ export function AgentConversation({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-slate-200 bg-white">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50 px-2">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border bg-muted/40 px-2">
         <Button
           aria-label="历史会话"
-          className="h-7 gap-1.5 px-2 rounded-md"
           onClick={() => setHistoryOpen(true)}
           size="sm"
           title="历史会话"
           type="button"
         >
-          <History size={14} />
+          <History />
           历史
         </Button>
         <span
-          className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700"
+          className="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
           title={activeSession?.title}
         >
           {activeSession?.title ?? "新会话"}
@@ -400,7 +399,7 @@ export function AgentConversation({
             {!loading && messages.length === 0 && !sending ? (
               <ConversationEmptyState
                 description="可让我搜索并审查译文、自动给出修改建议，审阅后一键应用。"
-                icon={<Bot size={24} />}
+                icon={<Bot size={28} />}
                 title="开始项目对话"
               />
             ) : null}
@@ -426,7 +425,7 @@ export function AgentConversation({
                   {liveParts.length > 0 ? (
                     <AssistantMessageParts parts={liveParts} streaming />
                   ) : (
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Loader2 className="animate-spin" size={14} />
                       正在准备检查
                     </div>
@@ -446,7 +445,7 @@ export function AgentConversation({
 
         {error ? (
           <div
-            className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+            className="flex items-center gap-2 border-t border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
             role="alert"
           >
             <span className="min-w-0 flex-1">{error}</span>
@@ -471,7 +470,7 @@ export function AgentConversation({
           />
         ) : null}
 
-        <div className="border-t border-slate-200 bg-white p-2">
+        <div className="border-t border-border bg-card p-2">
           <PromptInput onSubmit={({ text }) => sendMessage(text)}>
             <PromptInputBody>
               <PromptInputTextarea
@@ -480,7 +479,7 @@ export function AgentConversation({
               />
             </PromptInputBody>
             <PromptInputFooter>
-              <span className="px-1 text-[11px] text-slate-400">
+              <span className="px-1 text-[11px] text-muted-foreground/70">
                 Enter 发送，Shift+Enter 换行
               </span>
               <PromptInputSubmit

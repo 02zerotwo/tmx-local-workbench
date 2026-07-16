@@ -40,16 +40,16 @@ type AuditTaskListProps = {
 
 const STATUS_META: Record<
   AiAuditJobRecord["status"],
-  { label: string; className: string }
+  { label: string; variant: "outline" | "secondary" | "destructive"; className?: string }
 > = {
-  draft: { label: "草稿", className: "bg-muted text-muted-foreground" },
-  queued: { label: "排队中", className: "bg-slate-100 text-slate-600" },
-  running: { label: "审查中", className: "bg-blue-50 text-blue-700" },
-  paused: { label: "已暂停", className: "bg-amber-50 text-amber-700" },
-  stopped: { label: "已停止", className: "bg-muted text-muted-foreground" },
-  complete: { label: "已完成", className: "bg-emerald-50 text-emerald-700" },
-  partial_failure: { label: "部分完成", className: "bg-amber-50 text-amber-700" },
-  applied: { label: "已入库", className: "bg-emerald-50 text-emerald-700" },
+  draft: { label: "草稿", variant: "outline", className: "text-muted-foreground" },
+  queued: { label: "排队中", variant: "outline", className: "text-muted-foreground" },
+  running: { label: "审查中", variant: "secondary" },
+  paused: { label: "已暂停", variant: "outline", className: "text-muted-foreground" },
+  stopped: { label: "已停止", variant: "outline", className: "text-muted-foreground" },
+  complete: { label: "已完成", variant: "outline" },
+  partial_failure: { label: "部分完成", variant: "destructive" },
+  applied: { label: "已入库", variant: "outline" },
 };
 
 const STATUS_LABEL: Record<ProjectFilters["status"], string> = {
@@ -141,36 +141,35 @@ export function AuditTaskList({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-2">
-        <span className="text-xs font-medium text-slate-700">
+      <div className="flex items-center gap-2 border-b border-border bg-card px-3 py-2">
+        <span className="text-xs font-medium text-foreground">
           审查任务 ({jobs.length})
         </span>
         <Button
-          className="ml-auto h-8 gap-1.5"
+          className="ml-auto"
           onClick={() => setConfigOpen(true)}
-          size="sm"
           type="button"
         >
-          <Plus size={14} />
+          <Plus />
           新建任务
         </Button>
       </div>
 
       {error ? (
-        <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">
+        <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">
           {error}
         </div>
       ) : null}
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
         {loading ? (
-          <div className="flex h-24 items-center justify-center gap-2 text-xs text-slate-500">
+          <div className="flex h-24 items-center justify-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="animate-spin" size={16} />
             正在加载任务
           </div>
         ) : jobs.length === 0 ? (
-          <div className="flex h-40 flex-col items-center justify-center gap-2 text-center text-xs text-slate-500">
-            <ClipboardList className="text-slate-300" size={28} />
+          <div className="flex h-40 flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+            <ClipboardList className="text-muted-foreground/70" size={28} />
             还没有审查任务，点击右上角「新建任务」开始。
           </div>
         ) : (
@@ -183,22 +182,22 @@ export function AuditTaskList({
             const active = job.status === "running" || job.status === "paused";
             return (
               <div
-                className="rounded-md border border-slate-200 bg-white p-3"
+                className="rounded-md border border-border bg-card p-3"
                 key={job.id}
               >
                 <div className="flex items-center gap-2">
-                  <Badge className={meta.className} variant="secondary">
+                  <Badge className={meta.className} variant={meta.variant}>
                     {meta.label}
                   </Badge>
-                  <span className="min-w-0 flex-1 truncate text-xs text-slate-600">
+                  <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                     {scopeSummary(job.filters)}
                   </span>
-                  <span className="shrink-0 text-[11px] tabular-nums text-slate-400">
+                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
                     {progress}%
                   </span>
                 </div>
                 <Progress className="mt-2" value={progress} />
-                <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
+                <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span className="tabular-nums">
                     {job.completedItems.toLocaleString()} / {job.totalItems.toLocaleString()} 条
                   </span>
@@ -210,7 +209,6 @@ export function AuditTaskList({
                 <div className="mt-2 flex items-center gap-1.5">
                   {active ? (
                     <Button
-                      className="h-7 gap-1 px-2 text-xs"
                       disabled={busyJobId === job.id}
                       onClick={() => void pauseOrResume(job)}
                       size="sm"
@@ -218,18 +216,18 @@ export function AuditTaskList({
                       variant="ghost"
                     >
                       {busyJobId === job.id ? (
-                        <Loader2 className="animate-spin" size={13} />
+                        <Loader2 className="animate-spin" />
                       ) : job.status === "paused" ? (
-                        <CirclePlay size={13} />
+                        <CirclePlay />
                       ) : (
-                        <CirclePause size={13} />
+                        <CirclePause />
                       )}
                       {job.status === "paused" ? "继续" : "暂停"}
                     </Button>
                   ) : null}
                   {reviewable ? (
                     <Button
-                      className="ml-auto h-7 gap-1 px-2.5 text-xs"
+                      className="ml-auto"
                       onClick={() => onOpenJob(job)}
                       size="sm"
                       type="button"

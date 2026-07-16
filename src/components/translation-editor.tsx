@@ -35,7 +35,6 @@ import {
   Drawer,
   DrawerClose,
   DrawerContent,
-  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
@@ -520,33 +519,30 @@ export const TranslationEditor = forwardRef<
   };
 
   return (
-    <aside className="relative flex min-h-0 w-full shrink-0 flex-col border-l border-slate-200 bg-slate-50">
+    <aside className="relative flex min-h-0 w-full shrink-0 flex-col border-l border-border bg-background">
       <div
         aria-hidden={historyOpen || undefined}
-        className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4"
+        className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4"
         inert={historyOpen}
       >
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-slate-900">翻译编辑</h2>
-          <p className="truncate text-xs text-slate-500">{row.id}</p>
+          <h2 className="text-sm font-semibold text-foreground">翻译编辑</h2>
+          <p className="truncate text-xs text-muted-foreground">{row.id}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <div className="flex flex-col items-end">
             {showSaveSuccess ? (
-              <span
-                className="text-xs font-medium text-emerald-700"
-                role="status"
-              >
+              <span className="text-xs font-medium text-foreground" role="status">
                 保存成功
               </span>
             ) : null}
             <span
               className={
                 saveState === "error"
-                  ? "text-xs text-red-700"
+                  ? "text-xs text-destructive"
                   : saveState === "dirty"
-                    ? "text-xs text-amber-700"
-                    : "text-xs text-slate-500"
+                    ? "text-xs font-medium text-foreground"
+                    : "text-xs text-muted-foreground"
               }
             >
               {formatSaveState(saveState, lastSavedAt)}
@@ -554,10 +550,11 @@ export const TranslationEditor = forwardRef<
           </div>
           <Button
             aria-label="修改记录"
-            className="h-9 shrink-0 px-2"
+            className="shrink-0"
             onClick={() => setHistoryOpen(true)}
             ref={historyButtonRef}
             type="button"
+            variant="outline"
           >
             <History size={14} />
             记录
@@ -573,14 +570,16 @@ export const TranslationEditor = forwardRef<
       >
         <section className="mb-5">
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-slate-600">源文本</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              源文本
+            </h3>
             <div className="flex items-center gap-2">
               {copyFeedback?.field === "source" ? (
                 <span
                   className={
                     copyFeedback.state === "success"
-                      ? "text-xs text-emerald-700"
-                      : "text-xs text-red-700"
+                      ? "text-xs text-foreground"
+                      : "text-xs text-destructive"
                   }
                   role={copyFeedback.state === "error" ? "alert" : "status"}
                 >
@@ -595,13 +594,13 @@ export const TranslationEditor = forwardRef<
                 onClick={() => void copyDraft("source")}
                 title="复制源文本"
               >
-                <Copy size={14} />
+                <Copy />
               </IconButton>
             </div>
           </div>
           <Textarea
             aria-label="源文本"
-            className="min-h-28 w-full resize-y rounded border border-slate-300 bg-white p-3 text-sm leading-6 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+            className="min-h-28 w-full resize-y bg-card p-3 text-[15px] leading-6"
             disabled={interactionLocked}
             onBlur={() => void flush().catch(() => undefined)}
             onChange={(event) => changeDraft("sourceText", event.target.value)}
@@ -612,14 +611,16 @@ export const TranslationEditor = forwardRef<
 
         <section className="mb-5">
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-slate-600">目标文本</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">
+              目标文本
+            </h3>
             <div className="flex items-center gap-1">
               {copyFeedback?.field === "target" ? (
                 <span
                   className={
                     copyFeedback.state === "success"
-                      ? "mr-1 text-xs text-emerald-700"
-                      : "mr-1 text-xs text-red-700"
+                      ? "mr-1 text-xs text-foreground"
+                      : "mr-1 text-xs text-destructive"
                   }
                   role={copyFeedback.state === "error" ? "alert" : "status"}
                 >
@@ -634,7 +635,7 @@ export const TranslationEditor = forwardRef<
                 onClick={() => void copyDraft("target")}
                 title="复制目标文本"
               >
-                <Copy size={14} />
+                <Copy />
               </IconButton>
               <IconButton
                 disabled={interactionLocked}
@@ -642,7 +643,7 @@ export const TranslationEditor = forwardRef<
                 onClick={capitalizeTargetSelection}
                 title="将选中区域的首个英文字母转为大写"
               >
-                <CaseUpper size={15} />
+                <CaseUpper />
               </IconButton>
               <IconButton
                 disabled={interactionLocked}
@@ -650,7 +651,7 @@ export const TranslationEditor = forwardRef<
                 onClick={resetTranslation}
                 title="恢复原文"
               >
-                <RotateCcw size={14} />
+                <RotateCcw />
               </IconButton>
               <IconButton
                 disabled={interactionLocked}
@@ -658,17 +659,17 @@ export const TranslationEditor = forwardRef<
                 onClick={() => setFindExpanded((expanded) => !expanded)}
                 title="查找替换"
               >
-                <Search size={14} />
+                <Search />
               </IconButton>
             </div>
           </div>
 
           {findExpanded ? (
-            <div className="mb-2 space-y-2 rounded border border-slate-200 bg-white p-2">
+            <div className="mb-2 space-y-2 rounded-lg border border-border bg-card p-2">
               <div className="flex min-w-0 gap-1">
                 <Textarea
                   aria-label="查找内容"
-                  className="h-8 min-w-0 flex-1 resize-none rounded border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  className="h-8 min-w-0 flex-1 resize-none px-2 py-1.5 text-xs"
                   disabled={interactionLocked}
                   onChange={(event) => updateFindDraft(event.target.value)}
                   onKeyDown={(event) => {
@@ -690,8 +691,8 @@ export const TranslationEditor = forwardRef<
                   aria-pressed={caseSensitive}
                   className={
                     caseSensitive
-                      ? "size-8 shrink-0 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                      : "size-8 shrink-0 text-slate-600"
+                      ? "size-8 shrink-0 bg-accent text-accent-foreground"
+                      : "size-8 shrink-0"
                   }
                   disabled={interactionLocked}
                   onClick={toggleCaseSensitive}
@@ -700,11 +701,11 @@ export const TranslationEditor = forwardRef<
                   type="button"
                   variant="ghost"
                 >
-                  <CaseSensitiveIcon size={15} />
+                  <CaseSensitiveIcon />
                 </Button>
                 <Button
                   aria-label="执行查找"
-                  className="size-8 shrink-0 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                  className="size-8 shrink-0"
                   disabled={interactionLocked || !findDraft}
                   onClick={() => submitFind()}
                   title="执行查找（Enter）"
@@ -712,19 +713,19 @@ export const TranslationEditor = forwardRef<
                   type="button"
                   variant="ghost"
                 >
-                  <Search size={14} />
+                  <Search />
                 </Button>
               </div>
               <Input
                 aria-label="替换为"
-                className="h-8 w-full min-w-0 rounded border border-slate-300 px-2 text-xs outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                className="h-8 w-full min-w-0 text-xs"
                 disabled={interactionLocked}
                 onChange={(event) => setReplacement(event.target.value)}
                 placeholder="替换为"
                 value={replacement}
               />
               <div className="flex min-w-0 items-center gap-1">
-                <span className="mr-auto whitespace-nowrap text-xs tabular-nums text-slate-500">
+                <span className="mr-auto whitespace-nowrap text-xs tabular-nums text-muted-foreground">
                   {matches.length === 0
                     ? "0 / 0"
                     : `${activeMatch + 1} / ${matches.length}`}
@@ -737,7 +738,7 @@ export const TranslationEditor = forwardRef<
                   onClick={() => selectMatch(activeMatch - 1)}
                   title="上一个匹配"
                 >
-                  <ChevronUp size={14} />
+                  <ChevronUp />
                 </IconButton>
                 <IconButton
                   disabled={
@@ -747,10 +748,10 @@ export const TranslationEditor = forwardRef<
                   onClick={() => selectMatch(activeMatch + 1)}
                   title="下一个匹配"
                 >
-                  <ChevronDown size={14} />
+                  <ChevronDown />
                 </IconButton>
                 <Button
-                  className="h-7 whitespace-nowrap px-2 text-xs text-slate-700"
+                  className="whitespace-nowrap text-xs"
                   disabled={
                     interactionLocked || !findQuery || matches.length === 0
                   }
@@ -763,7 +764,7 @@ export const TranslationEditor = forwardRef<
                   替换当前
                 </Button>
                 <Button
-                  className="h-7 whitespace-nowrap px-2 text-xs text-slate-700"
+                  className="whitespace-nowrap text-xs"
                   disabled={
                     interactionLocked || !findQuery || matches.length === 0
                   }
@@ -779,13 +780,13 @@ export const TranslationEditor = forwardRef<
             </div>
           ) : null}
 
-          <div className="relative rounded bg-white">
+          <div className="relative rounded-lg bg-card">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-px overflow-hidden rounded text-transparent"
+              className="pointer-events-none absolute inset-px overflow-hidden rounded-lg text-transparent"
               ref={targetHighlightRef}
             >
-              <div className="min-h-full whitespace-pre-wrap break-words p-3 text-sm leading-6">
+              <div className="min-h-full whitespace-pre-wrap break-words p-3 text-[15px] leading-6">
                 <HighlightedText
                   activeMatch={activeMatch}
                   matches={matches}
@@ -795,7 +796,7 @@ export const TranslationEditor = forwardRef<
             </div>
             <Textarea
               aria-label="目标文本"
-              className="relative z-10 min-h-44 w-full resize-y rounded border border-slate-300 bg-transparent p-3 text-sm leading-6 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              className="relative z-10 min-h-44 w-full resize-y bg-transparent p-3 text-[15px] leading-6"
               disabled={interactionLocked}
               onBlur={() => void flush().catch(() => undefined)}
               onChange={(event) =>
@@ -808,7 +809,7 @@ export const TranslationEditor = forwardRef<
           </div>
         </section>
 
-        <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">
+        <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
           <Info label="源语言" value={row.sourceLang} />
           <Info label="目标语言" value={row.targetLang} />
           <Info label="位置" value={String(row.position)} />
@@ -818,11 +819,11 @@ export const TranslationEditor = forwardRef<
         <div className="mt-5">
           {Object.keys(row.metadata).length > 0 ? (
             <EditorField label="元数据">
-              <dl className="space-y-2 rounded border border-slate-200 bg-white p-3 text-xs">
+              <dl className="space-y-2 rounded-lg border border-border bg-card p-3 text-xs">
                 {Object.entries(row.metadata).map(([key, value]) => (
                   <div className="grid grid-cols-[110px_1fr] gap-2" key={key}>
-                    <dt className="truncate text-slate-500">{key}</dt>
-                    <dd className="break-words text-slate-700">{value}</dd>
+                    <dt className="truncate text-muted-foreground">{key}</dt>
+                    <dd className="break-words text-foreground">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -837,7 +838,7 @@ export const TranslationEditor = forwardRef<
         open={historyOpen}
       >
         <DrawerContent
-          className="w-[min(520px,50vw)] gap-0 bg-slate-50 sm:max-w-[520px]"
+          className="w-[min(520px,50vw)] gap-0 bg-background sm:max-w-[520px]"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             historyButtonRef.current?.focus();
@@ -847,23 +848,22 @@ export const TranslationEditor = forwardRef<
             historyCloseButtonRef.current?.focus();
           }}
         >
-          <DrawerHeader className="flex h-14 shrink-0 flex-row items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-0 text-left">
+          <DrawerHeader className="flex h-14 shrink-0 flex-row items-center justify-between gap-3 border-b border-border bg-card px-4 py-0 text-left">
             <div>
-              <DrawerTitle className="text-sm font-semibold text-slate-900">
+              <DrawerTitle className="text-sm font-semibold text-foreground">
                 修改记录
               </DrawerTitle>
             </div>
             <DrawerClose asChild>
               <Button
                 aria-label="关闭修改记录"
-                className="size-8 text-slate-500"
                 ref={historyCloseButtonRef}
                 size="icon"
                 title="关闭修改记录"
                 type="button"
                 variant="ghost"
               >
-                <X size={16} />
+                <X />
               </Button>
             </DrawerClose>
           </DrawerHeader>
@@ -873,87 +873,87 @@ export const TranslationEditor = forwardRef<
           >
             {restoreError || historyError ? (
               <p
-                className="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700"
+                className="rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive"
                 role="alert"
               >
                 {restoreError || historyError}
               </p>
             ) : historyLoading ? (
-              <p className="text-xs text-slate-500">正在加载修改记录...</p>
+              <p className="text-xs text-muted-foreground">正在加载修改记录...</p>
             ) : (
               <>
                 {sortedHistory.length === 0 ? (
-                  <p className="text-xs text-slate-500">暂无修改记录</p>
+                  <p className="text-xs text-muted-foreground">暂无修改记录</p>
                 ) : (
                   sortedHistory.map((entry) => (
                     <article
-                      className="rounded border border-slate-200 bg-white p-3"
+                      className="rounded-lg border border-border bg-card p-3"
                       key={entry.version}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-xs font-semibold text-slate-700">
+                          <p className="text-xs font-semibold text-foreground">
                             版本 {entry.version}
                           </p>
                           <time
-                            className="text-[11px] text-slate-500"
+                            className="text-xs text-muted-foreground"
                             dateTime={entry.changedAt}
                           >
                             {formatHistoryTime(entry.changedAt)}
                           </time>
                         </div>
                         <Button
-                          className="h-7 shrink-0 px-2 text-xs text-slate-700"
+                          className="shrink-0 text-xs"
                           disabled={interactionLocked || !onRestoreHistory}
                           onClick={() => void restoreHistory(entry)}
                           size="sm"
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                         >
                           恢复此版本
                         </Button>
                       </div>
-                      <p className="mt-3 text-[11px] font-medium text-slate-500">
+                      <p className="mt-3 text-xs font-medium text-muted-foreground">
                         源文本
                       </p>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">
+                      <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-foreground/80">
                         {entry.sourceText || "（空）"}
                       </p>
-                      <p className="mt-3 text-[11px] font-medium text-slate-500">
+                      <p className="mt-3 text-xs font-medium text-muted-foreground">
                         目标文本
                       </p>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">
+                      <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-foreground/80">
                         {entry.targetText || "（空译文）"}
                       </p>
                     </article>
                   ))
                 )}
-                <article className="rounded border border-slate-200 bg-white p-3">
+                <article className="rounded-lg border border-border bg-card p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-semibold text-slate-700">
+                    <p className="text-xs font-semibold text-foreground">
                       导入版本
                     </p>
                     <Button
-                      className="h-7 shrink-0 px-2 text-xs text-slate-700"
+                      className="shrink-0 text-xs"
                       disabled={interactionLocked || !onRestoreHistory}
                       onClick={() => void restoreHistory(importedSnapshot)}
                       size="sm"
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                     >
                       恢复此版本
                     </Button>
                   </div>
-                  <p className="mt-3 text-[11px] font-medium text-slate-500">
+                  <p className="mt-3 text-xs font-medium text-muted-foreground">
                     源文本
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">
+                  <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-foreground/80">
                     {importedSnapshot.sourceText || "（空）"}
                   </p>
-                  <p className="mt-3 text-[11px] font-medium text-slate-500">
+                  <p className="mt-3 text-xs font-medium text-muted-foreground">
                     目标文本
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">
+                  <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-foreground/80">
                     {importedSnapshot.targetText || "（空译文）"}
                   </p>
                 </article>
@@ -965,7 +965,7 @@ export const TranslationEditor = forwardRef<
 
       <div
         aria-hidden={historyOpen || undefined}
-        className="grid h-14 shrink-0 grid-cols-[36px_36px_minmax(0,1fr)_minmax(0,1.25fr)] items-center gap-1 border-t border-slate-200 bg-white px-2"
+        className="grid h-14 shrink-0 grid-cols-[36px_36px_minmax(0,1fr)_minmax(0,1.25fr)] items-center gap-1.5 border-t border-border bg-card px-2"
         data-testid="editor-actions"
         inert={historyOpen}
       >
@@ -975,7 +975,7 @@ export const TranslationEditor = forwardRef<
           onClick={() => void navigate("previous")}
           shortcut="Alt+↑"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft />
         </TooltipIconButton>
         <TooltipIconButton
           disabled={interactionLocked || !canNext}
@@ -983,26 +983,27 @@ export const TranslationEditor = forwardRef<
           onClick={() => void navigate("next")}
           shortcut="Alt+↓"
         >
-          <ArrowRight size={16} />
+          <ArrowRight />
         </TooltipIconButton>
         <Button
-          className="h-9 min-w-0 gap-2"
+          className="min-w-0 gap-2"
           disabled={interactionLocked}
           onClick={() => void saveExplicitly()}
           type="button"
-          size="sm"
+          size="lg"
+          variant="outline"
         >
-          <Save className="shrink-0" size={14} />
+          <Save className="shrink-0" />
           <span className="truncate">立即保存</span>
         </Button>
         <Button
-          className="h-9 min-w-0 gap-2 px-2"
+          className="min-w-0 gap-2"
           disabled={interactionLocked || !canNext}
           onClick={() => void saveAndNext()}
           type="button"
-          size="sm"
+          size="lg"
         >
-          <Save className="shrink-0" size={14} />
+          <Save className="shrink-0" />
           <span className="truncate">保存并下一条</span>
         </Button>
       </div>
@@ -1036,8 +1037,8 @@ function HighlightedText({
             <mark
               className={
                 index === activeMatch
-                  ? "bg-orange-300 text-transparent"
-                  : "bg-yellow-200 text-transparent"
+                  ? "rounded-sm bg-foreground/30 text-transparent"
+                  : "rounded-sm bg-foreground/12 text-transparent"
               }
               data-testid="find-highlight"
             >
@@ -1162,12 +1163,12 @@ function IconButton({
   return (
     <Button
       aria-label={label}
-      className="size-9 shrink-0 text-slate-700"
+      className="shrink-0"
       disabled={disabled}
       onClick={onClick}
       ref={buttonRef}
       title={title}
-      size="icon"
+      size="icon-sm"
       type="button"
       variant="ghost"
     >
@@ -1195,7 +1196,7 @@ function TooltipIconButton({
         <TooltipTrigger asChild>
           <Button
             aria-label={label}
-            className="size-9 text-slate-700"
+            className="size-9"
             disabled={disabled}
             onClick={onClick}
             size="icon"
@@ -1225,7 +1226,9 @@ function EditorField({
 }) {
   return (
     <section className="mb-5">
-      <h3 className="mb-2 text-xs font-semibold text-slate-600">{label}</h3>
+      <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
+        {label}
+      </h3>
       {children}
     </section>
   );
@@ -1233,9 +1236,9 @@ function EditorField({
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-slate-200 bg-white p-2.5">
-      <div className="text-slate-500">{label}</div>
-      <div className="mt-1 truncate font-medium text-slate-800" title={value}>
+    <div className="rounded-lg border border-border bg-card p-2.5">
+      <div className="text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate font-medium text-foreground" title={value}>
         {value}
       </div>
     </div>

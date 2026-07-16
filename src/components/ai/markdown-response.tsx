@@ -31,7 +31,7 @@ export function MarkdownResponse({
 }: MarkdownResponseProps) {
   return (
     <Streamdown
-      className={cn("text-sm leading-6 text-slate-800", className)}
+      className={cn("text-sm leading-6 text-foreground", className)}
       controls={{ code: { download: false } }}
       isAnimating={streaming}
       mode={streaming ? "streaming" : "static"}

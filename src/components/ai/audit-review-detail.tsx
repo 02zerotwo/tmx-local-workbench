@@ -148,38 +148,34 @@ export function AuditReviewDetail({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-2 py-2">
+      <div className="flex items-center gap-2 border-b border-border bg-card px-2 py-2">
         <Button
           aria-label="返回任务列表"
-          className="h-8 gap-1 px-2 text-xs text-slate-600"
+          className="gap-1 text-muted-foreground"
           onClick={onBack}
-          size="sm"
           title="返回任务列表"
           type="button"
           variant="ghost"
         >
-          <ArrowLeft size={14} />
+          <ArrowLeft />
           任务列表
         </Button>
-        <span className="text-xs font-medium text-slate-700">
+        <span className="text-xs font-medium text-foreground">
           {findings.length} 条建议
         </span>
         <Button
-          className="ml-auto h-8"
+          className="ml-auto"
           disabled={busy}
           onClick={() => void acceptAll()}
-          size="sm"
           type="button"
           variant="ghost"
         >
-          <CheckCheck size={14} />
+          <CheckCheck />
           全部接受
         </Button>
         <Button
-          className="h-8"
           disabled={busy || acceptedCount === 0 || job.status === "applied"}
           onClick={() => setConfirming(true)}
-          size="sm"
           type="button"
         >
           应用 {acceptedCount} 条
@@ -187,19 +183,19 @@ export function AuditReviewDetail({
       </div>
 
       {success ? (
-        <div className="border-b border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+        <div className="border-b border-border bg-muted px-3 py-2 text-xs text-foreground">
           {success}
         </div>
       ) : null}
       {error ? (
-        <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">
+        <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">
           {error}
         </div>
       ) : null}
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
         {findings.length === 0 ? (
-          <div className="flex h-40 items-center justify-center text-center text-xs text-slate-500">
+          <div className="flex h-40 items-center justify-center text-center text-xs text-muted-foreground">
             这项审查没有发现需要修改的问题。
           </div>
         ) : (
@@ -209,45 +205,45 @@ export function AuditReviewDetail({
             const isEditing = editing.has(finding.id);
             return (
               <article
-                className="rounded-md border border-slate-200 bg-white p-3"
+                className="rounded-md border border-border bg-card p-3"
                 key={finding.id}
               >
                 <div className="flex items-center gap-2">
                   <Badge variant={finding.severity === "error" ? "destructive" : "secondary"}>
                     {finding.category}
                   </Badge>
-                  <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-900">
+                  <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
                     {finding.summary}
                   </span>
-                  <span className="shrink-0 text-[11px] tabular-nums text-slate-400">
+                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
                     {Math.round(finding.confidence * 100)}%
                   </span>
                 </div>
 
                 {finding.evidence ? (
-                  <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                  <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
                     {finding.evidence}
                   </p>
                 ) : null}
 
                 <div className="mt-2 space-y-1.5">
-                  <p className="text-[11px] font-medium text-slate-400">源文</p>
-                  <p className="whitespace-pre-wrap break-words rounded bg-slate-50 px-2.5 py-2 text-xs leading-5 text-slate-700">
+                  <p className="text-[11px] font-medium text-muted-foreground/70">源文</p>
+                  <p className="whitespace-pre-wrap break-words rounded bg-muted px-2.5 py-2 text-xs leading-5 text-foreground">
                     {finding.sourceText}
                   </p>
                   {hasSuggestion ? (
                     <>
-                      <p className="text-[11px] font-medium text-slate-400">
-                        改动对比（红=删除，绿=新增）
+                      <p className="text-[11px] font-medium text-muted-foreground/70">
+                        改动对比（红=删除，灰=新增）
                       </p>
-                      <div className="rounded border border-slate-200 px-2.5 py-2">
+                      <div className="rounded border border-border px-2.5 py-2">
                         <TranslationDiff after={draft} before={finding.targetText} />
                       </div>
                     </>
                   ) : (
                     <>
-                      <p className="text-[11px] font-medium text-slate-400">当前译文</p>
-                      <p className="whitespace-pre-wrap break-words rounded bg-slate-50 px-2.5 py-2 text-xs leading-5 text-slate-700">
+                      <p className="text-[11px] font-medium text-muted-foreground/70">当前译文</p>
+                      <p className="whitespace-pre-wrap break-words rounded bg-muted px-2.5 py-2 text-xs leading-5 text-foreground">
                         {finding.targetText || "（空译文）"}
                       </p>
                     </>
@@ -255,7 +251,7 @@ export function AuditReviewDetail({
                   {isEditing && hasSuggestion ? (
                     <Textarea
                       aria-label="编辑建议译文"
-                      className="min-h-16 bg-emerald-50/40 text-xs leading-5 text-slate-900"
+                      className="min-h-16 text-xs leading-5 text-foreground"
                       onChange={(event) =>
                         setDrafts((current) => ({ ...current, [finding.id]: event.target.value }))
                       }
@@ -267,18 +263,16 @@ export function AuditReviewDetail({
                 <div className="mt-2 flex items-center gap-1">
                   <Button
                     aria-label="接受建议"
-                    className="h-7 gap-1 px-2 text-xs"
                     disabled={busy || !hasSuggestion}
                     onClick={() => void decide(finding, "accepted")}
                     size="sm"
                     type="button"
                     variant="ghost"
                   >
-                    <Check size={13} />
+                    <Check />
                     接受
                   </Button>
                   <Button
-                    className="h-7 gap-1 px-2 text-xs"
                     disabled={busy || !hasSuggestion}
                     onClick={() => {
                       if (isEditing) void decide(finding, "edited", draft);
@@ -288,19 +282,18 @@ export function AuditReviewDetail({
                     type="button"
                     variant="ghost"
                   >
-                    <Pencil size={13} />
+                    <Pencil />
                     {isEditing ? "保存修改" : "编辑"}
                   </Button>
                   <Button
                     aria-label="拒绝建议"
-                    className="h-7 gap-1 px-2 text-xs"
                     disabled={busy}
                     onClick={() => void decide(finding, "rejected")}
                     size="sm"
                     type="button"
                     variant="ghost"
                   >
-                    <X size={13} />
+                    <X />
                     拒绝
                   </Button>
                   {finding.decision !== "pending" ? (

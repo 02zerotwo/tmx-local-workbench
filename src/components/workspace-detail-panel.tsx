@@ -26,7 +26,7 @@ export function WorkspaceDetailPanel({
 
   return (
     <div
-      className="flex h-full min-h-0 flex-col bg-slate-50"
+      className="flex h-full min-h-0 flex-col bg-background"
       data-testid="workspace-detail-panel"
     >
       <Tabs
@@ -40,7 +40,7 @@ export function WorkspaceDetailPanel({
         }}
         value={mode}
       >
-        <div className="flex h-11 shrink-0 items-center border-b border-slate-200 bg-white px-3">
+        <div className="flex h-11 shrink-0 items-center border-b border-border bg-card px-3">
           <TabsList aria-label="工作模式" className="h-8">
             <TabsTrigger value="edit">
               <SquarePen />

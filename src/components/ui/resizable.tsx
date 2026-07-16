@@ -48,14 +48,14 @@ function ResizableHandle({
   return (
     <ResizablePrimitive.Separator
       className={cn(
-        "group relative z-10 flex w-px shrink-0 items-center justify-center bg-border outline-none transition-colors hover:bg-blue-400 focus-visible:bg-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/30 data-[separator=active]:bg-blue-500",
+        "group relative z-10 flex w-px shrink-0 items-center justify-center bg-border outline-none transition-colors hover:bg-foreground/30 focus-visible:bg-ring focus-visible:ring-2 focus-visible:ring-ring/30 data-[separator=active]:bg-foreground/40",
         className,
       )}
       data-slot="resizable-handle"
       {...props}
     >
       {withHandle ? (
-        <span className="z-10 flex h-10 w-3 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground shadow-xs transition-colors group-hover:border-blue-300 group-hover:text-blue-700">
+        <span className="z-10 flex h-10 w-3 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground shadow-xs transition-colors group-hover:border-foreground/40 group-hover:text-foreground">
           <GripVertical className="size-3" />
         </span>
       ) : null}

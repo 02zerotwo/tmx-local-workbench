@@ -124,7 +124,7 @@ export function AuditTaskConfigDialog({
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-h-[85vh] gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="border-b border-slate-200 px-4 py-3">
+        <DialogHeader className="border-b border-border px-4 py-3">
           <DialogTitle className="text-sm">新建审查任务</DialogTitle>
           <DialogDescription className="text-xs">
             冻结所选范围逐条审查，AI 只暂存建议，完成后审阅再写库。
@@ -133,16 +133,16 @@ export function AuditTaskConfigDialog({
 
         <div className="max-h-[60vh] space-y-4 overflow-y-auto p-4">
           <section className="space-y-2">
-            <h4 className="text-xs font-semibold text-slate-900">审查范围</h4>
+            <h4 className="text-xs font-semibold text-foreground">审查范围</h4>
             <div className="flex gap-1.5">
               <div className="relative min-w-0 flex-1">
                 <Search
-                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70"
                   size={14}
                 />
                 <Input
                   aria-label="审查搜索"
-                  className="h-9 bg-white pl-8"
+                  className="pl-8"
                   onChange={(event) => setDraftQuery(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
@@ -162,7 +162,7 @@ export function AuditTaskConfigDialog({
                 }
                 value={filters.targetLanguage || "__all__"}
               >
-                <SelectTrigger aria-label="目标语言" className="w-full bg-white">
+                <SelectTrigger aria-label="目标语言" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -180,7 +180,7 @@ export function AuditTaskConfigDialog({
                 }
                 value={filters.status}
               >
-                <SelectTrigger aria-label="翻译状态" className="w-full bg-white">
+                <SelectTrigger aria-label="翻译状态" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -190,7 +190,7 @@ export function AuditTaskConfigDialog({
                 </SelectContent>
               </Select>
             </div>
-            <label className="flex min-h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-700">
+            <label className="flex min-h-9 items-center gap-2 rounded-md border border-border px-3 text-xs text-foreground">
               <Checkbox
                 checked={filters.duplicateOnly}
                 onCheckedChange={(checked) =>
@@ -198,31 +198,31 @@ export function AuditTaskConfigDialog({
                 }
               />
               仅重复项
-              <span className="ml-auto tabular-nums text-slate-500" role="status">
+              <span className="ml-auto tabular-nums text-muted-foreground" role="status">
                 {countLoading ? "统计中..." : `预计 ${resultCount.toLocaleString()} 条`}
               </span>
             </label>
           </section>
 
-          <section className="space-y-1.5 border-t border-slate-200 pt-3">
-            <h4 className="text-xs font-semibold text-slate-900">审查规则</h4>
-            <p className="text-[11px] text-slate-500">
+          <section className="space-y-1.5 border-t border-border pt-3">
+            <h4 className="text-xs font-semibold text-foreground">审查规则</h4>
+            <p className="text-[11px] text-muted-foreground">
               自由描述要求，例如术语表、语气、数字/标点规范、需忽略的差异等。
             </p>
             <Textarea
               aria-label="审查规则"
-              className="min-h-24 bg-white text-xs leading-5"
+              className="min-h-24 text-xs leading-5"
               onChange={(event) => setCustomRules(event.target.value)}
               placeholder="例如：术语「服务器」统一译为 server；保持正式语气；忽略中英文标点差异。"
               value={customRules}
             />
           </section>
 
-          <section className="grid grid-cols-2 gap-3 border-t border-slate-200 pt-3">
-            <label className="space-y-1.5 text-xs font-medium text-slate-700">
+          <section className="grid grid-cols-2 gap-3 border-t border-border pt-3">
+            <label className="space-y-1.5 text-xs font-medium text-foreground">
               最低置信度
               <Select onValueChange={setMinConfidence} value={minConfidence}>
-                <SelectTrigger className="bg-white">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -232,41 +232,41 @@ export function AuditTaskConfigDialog({
                 </SelectContent>
               </Select>
             </label>
-            <label className="flex items-center gap-2 self-end rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700">
+            <label className="flex items-center gap-2 self-end rounded-md border border-border px-3 py-2.5 text-xs text-foreground">
               <Checkbox
                 checked={allowRewrite}
                 onCheckedChange={(checked) => setAllowRewrite(checked === true)}
               />
               生成纠正译文
             </label>
-            <label className="col-span-2 space-y-1.5 text-xs font-medium text-slate-700">
+            <label className="col-span-2 space-y-1.5 text-xs font-medium text-foreground">
               <span className="flex items-center justify-between">
                 并发审查数
-                <span className="tabular-nums text-slate-500">{concurrency}</span>
+                <span className="tabular-nums text-muted-foreground">{concurrency}</span>
               </span>
               <input
                 aria-label="并发审查数"
-                className="w-full accent-blue-600"
+                className="w-full accent-primary"
                 max={20}
                 min={1}
                 onChange={(event) => setConcurrency(Number(event.target.value))}
                 type="range"
                 value={concurrency}
               />
-              <span className="text-[11px] font-normal text-slate-400">
+              <span className="text-[11px] font-normal text-muted-foreground/70">
                 1–20，越大越快但更容易触发接口限流。
               </span>
             </label>
           </section>
 
           {error ? (
-            <p className="text-xs text-red-700" role="alert">
+            <p className="text-xs text-destructive" role="alert">
               {error}
             </p>
           ) : null}
         </div>
 
-        <DialogFooter className="border-t border-slate-200 px-4 py-3">
+        <DialogFooter className="border-t border-border px-4 py-3">
           <Button
             disabled={busy}
             onClick={() => onOpenChange(false)}
@@ -283,9 +283,9 @@ export function AuditTaskConfigDialog({
             type="button"
           >
             {busy ? (
-              <Loader2 className="animate-spin" size={14} />
+              <Loader2 className="animate-spin" />
             ) : (
-              <ShieldCheck size={14} />
+              <ShieldCheck />
             )}
             开始审查 {resultCount > 0 ? `(${resultCount.toLocaleString()})` : ""}
           </Button>

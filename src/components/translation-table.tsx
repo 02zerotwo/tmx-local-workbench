@@ -1,13 +1,7 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import {
-  CheckCircle2,
-  CircleAlert,
-  Loader2,
-  PencilLine,
-  SearchX,
-} from "lucide-react";
+import { Loader2, SearchX } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { TranslationUnitRow } from "@/lib/desktop-types";
 import { Badge } from "@/components/ui/badge";
@@ -178,7 +172,7 @@ export function TranslationTable({
                     <TableCell
                       className={
                         empty
-                          ? "min-w-0 truncate px-3 pr-4 italic text-destructive"
+                          ? "min-w-0 truncate px-3 pr-4 italic text-muted-foreground"
                           : "min-w-0 truncate px-3 pr-4 text-foreground"
                       }
                       title={row.targetText}
@@ -188,22 +182,20 @@ export function TranslationTable({
                     <TableCell className="flex min-w-0 items-center px-3">
                       {empty ? (
                         <Badge
-                          className="gap-1 border-destructive/20 bg-destructive/10 text-destructive"
+                          className="gap-1.5 font-medium text-foreground"
                           variant="outline"
                         >
+                          <span className="size-1.5 rounded-full bg-foreground" />
                           空译文
                         </Badge>
                       ) : row.changed ? (
-                        <Badge
-                          className="gap-1 border-yellow-200 bg-amber-50 text-amber-100 dark:border-amber-900/60 dark:bg-amber-950 dark:text-amber-400"
-                          variant="outline"
-                        >
+                        <Badge className="gap-1" variant="secondary">
                           已修改
                         </Badge>
                       ) : (
                         <Badge
-                          className="gap-1 text-muted-foreground"
-                          variant="secondary"
+                          className="gap-1 font-normal text-muted-foreground"
+                          variant="outline"
                         >
                           原始
                         </Badge>

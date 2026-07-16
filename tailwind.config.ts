@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/**/*.{ts,tsx}",
     "./node_modules/streamdown/dist/*.js",
@@ -15,6 +16,10 @@ const config: Config = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -39,14 +44,13 @@ const config: Config = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-        ink: "#17202a",
-        panel: "#f7f8fa",
-        line: "#d7dde5",
       },
       boxShadow: {
-        soft: "0 12px 40px rgba(20, 28, 38, 0.08)",
+        sm: "0 1px 2px rgba(0, 0, 0, 0.05)",
+        md: "0 4px 12px rgba(0, 0, 0, 0.08)",
       },
       borderRadius: {
+        xl: "calc(var(--radius) + 4px)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",

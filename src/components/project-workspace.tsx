@@ -37,6 +37,7 @@ import {
 } from "@/lib/workspace-state";
 import { Pagination } from "./pagination";
 import { AiModePanel } from "./ai/ai-mode-panel";
+import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceDetailPanel } from "./workspace-detail-panel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -388,75 +389,76 @@ export function ProjectWorkspace({
   const resetKey = `${filters.query}|${filters.targetLanguage}|${filters.status}|${filters.duplicateOnly}|${page}|${pageSize}`;
 
   return (
-    <main className="flex h-screen min-h-[680px] flex-col overflow-hidden bg-slate-50 text-slate-900">
-      <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2">
+    <main className="flex h-screen min-h-[680px] flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
         <Button
           aria-label="返回项目库"
-          className="inline-flex size-10 cursor-pointer items-center justify-center rounded text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           onClick={() => void leaveWorkspace()}
           title="返回项目库"
           size="icon"
           type="button"
           variant="ghost"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft />
         </Button>
-        <span className="inline-flex size-9 items-center justify-center rounded bg-blue-700 text-white">
+        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Languages size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-semibold text-slate-950">
+          <h1 className="truncate text-base font-semibold text-foreground">
             {project.name}
           </h1>
-          <p className="truncate text-xs text-slate-500">{project.fileName}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {project.fileName}
+          </p>
         </div>
-        <div className="hidden items-center gap-4 text-xs text-slate-500 xl:flex">
+        <div className="hidden items-center gap-4 text-xs text-muted-foreground xl:flex">
           <span>
             翻译行{" "}
-            <strong className="ml-1 text-slate-800">
+            <strong className="ml-1 font-medium text-foreground">
               {project.totalUnits.toLocaleString()}
             </strong>
           </span>
           <span>
             已修改{" "}
-            <strong className="ml-1 text-amber-700">
+            <strong className="ml-1 font-medium text-foreground">
               {project.changedUnits.toLocaleString()}
             </strong>
           </span>
           <span>
             空译文{" "}
-            <strong className="ml-1 text-red-700">
+            <strong className="ml-1 font-medium text-foreground">
               {project.emptyUnits.toLocaleString()}
             </strong>
           </span>
         </div>
+        <Separator className="hidden h-6 xl:block" orientation="vertical" />
         <Button
-          className="h-9 text-slate-700"
           disabled={exporting}
           onClick={() => void exportProject("filtered")}
           type="button"
           variant="ghost"
         >
-          <Download size={16} />
+          <Download />
           导出筛选
         </Button>
         <Button
-          className="h-9 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
           disabled={exporting}
           onClick={() => void exportProject("all")}
           type="button"
-          variant="ghost"
+          variant="outline"
         >
           {exporting ? (
-            <Loader2 className="animate-spin" size={16} />
+            <Loader2 className="animate-spin" />
           ) : (
-            <FileSpreadsheet size={16} />
+            <FileSpreadsheet />
           )}
           导出全部
         </Button>
+        <ThemeToggle />
       </header>
 
-      <div className="h-1 shrink-0 bg-slate-200">
+      <div className="h-1 shrink-0 bg-muted">
         {exportProgress && exporting ? (
           <Progress
             aria-label="导出进度"
@@ -468,11 +470,12 @@ export function ProjectWorkspace({
 
       {error ? (
         <div
-          className="flex min-h-10 shrink-0 items-center justify-between border-b border-red-200 bg-red-50 px-4 text-sm text-red-800"
+          className="flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-destructive/30 bg-destructive/10 px-4 text-sm text-destructive"
           role="alert"
         >
           <span className="truncate">{error}</span>
           <Button
+            className="text-destructive hover:bg-destructive/15 hover:text-destructive"
             onClick={() => setError("")}
             size="sm"
             type="button"
@@ -486,29 +489,28 @@ export function ProjectWorkspace({
       {exportedPath ? (
         <div
           aria-label="导出成功"
-          className="flex min-h-11 shrink-0 items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-4 text-sm text-emerald-900"
+          className="flex min-h-11 shrink-0 items-center gap-2 border-b border-border bg-muted/60 px-4 text-sm text-foreground"
           role="status"
         >
-          <CheckCircle2 className="shrink-0 text-emerald-700" size={17} />
+          <CheckCircle2 className="size-4 shrink-0 text-foreground" />
           <span className="shrink-0 font-medium">导出成功</span>
-          <span className="min-w-0 flex-1 break-all text-xs text-emerald-800">
+          <span className="min-w-0 flex-1 break-all text-xs text-muted-foreground">
             {exportedPath}
           </span>
           <Button
-            className="h-8 shrink-0 gap-1.5 px-2.5 text-xs text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
             onClick={() => void openExportDirectory()}
             size="sm"
             type="button"
-            variant="ghost"
+            variant="outline"
           >
-            <FolderOpen size={14} />
+            <FolderOpen />
             打开文件夹
           </Button>
         </div>
       ) : null}
 
       <section className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-2.5">
-        <InputGroup className="h-9 min-w-56 flex-1 bg-background sm:max-w-sm">
+        <InputGroup className="h-8 min-w-56 flex-1 bg-background sm:max-w-sm">
           <InputGroupAddon>
             <Search size={16} />
           </InputGroupAddon>
@@ -542,11 +544,11 @@ export function ProjectWorkspace({
           ) : null}
         </InputGroup>
         <Button
-          className="h-9 shrink-0 gap-1.5"
+          className="shrink-0"
           onClick={() => void commitAction({ type: "submitSearch" })}
           type="button"
         >
-          <Search size={15} />
+          <Search />
           搜索
         </Button>
         <Separator className="hidden h-6 sm:block" orientation="vertical" />
@@ -561,9 +563,9 @@ export function ProjectWorkspace({
         >
           <SelectTrigger
             aria-label="目标语言"
-            className="!h-10 w-40 shrink-0 bg-background"
+            className="h-8 w-40 shrink-0 bg-background"
           >
-            <SelectValue className="!h-10" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper">
             <SelectItem value="__all__">全部目标语言</SelectItem>
@@ -576,7 +578,7 @@ export function ProjectWorkspace({
         </Select>
         <ToggleGroup
           aria-label="翻译状态"
-          className="grid h-full shrink-0 grid-cols-3 rounded-lg bg-muted p-1"
+          className="grid h-8 shrink-0 grid-cols-3 rounded-lg bg-muted p-1"
           onValueChange={(value) => {
             if (!value) {
               return;
@@ -610,7 +612,7 @@ export function ProjectWorkspace({
             只看空译文
           </ToggleGroupItem>
         </ToggleGroup>
-        <Label className="h-9 shrink-0 cursor-pointer rounded-lg border border-input px-3 text-sm font-normal text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+        <Label className="flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-input px-3 text-sm font-normal text-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
           <Checkbox
             checked={filters.duplicateOnly}
             onCheckedChange={(checked) =>
@@ -703,7 +705,7 @@ export function ProjectWorkspace({
                       row={selectedRow}
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
+                    <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
                       选择一条翻译开始编辑
                     </div>
                   )}

@@ -144,8 +144,8 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-500">
-        <Loader2 className="animate-spin" size={17} />
+      <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="animate-spin" size={16} />
         正在检查 AI 配置
       </div>
     );
@@ -153,24 +153,23 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
 
   if (!settings?.configured) {
     return (
-      <div className="flex h-full flex-col bg-slate-50">
-        <div className="border-b border-slate-200 bg-white px-4 py-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-            <KeyRound className="text-blue-700" size={17} />
+      <div className="flex h-full flex-col bg-background">
+        <div className="border-b border-border bg-card px-4 py-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <KeyRound size={16} />
             配置 DeepSeek API Key
           </div>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Key 使用系统加密服务保存在本机，不写入项目数据库或导出文件。
           </p>
         </div>
         <div className="space-y-3 p-4">
-          <label className="block text-xs font-medium text-slate-700" htmlFor="deepseek-api-key">
+          <label className="block text-xs font-medium text-foreground" htmlFor="deepseek-api-key">
             DeepSeek API Key
           </label>
           <Input
             aria-label="DeepSeek API Key"
             autoComplete="off"
-            className="h-10 bg-white"
             id="deepseek-api-key"
             onChange={(event) => setApiKey(event.target.value)}
             placeholder="sk-..."
@@ -178,27 +177,27 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
             value={apiKey}
           />
           <Button
-            className="h-10 w-full text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+            className="w-full"
             disabled={busy || !apiKey.trim()}
             onClick={() => void saveKey()}
+            size="lg"
             type="button"
-            variant="ghost"
           >
             {busy ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
             保存并验证
           </Button>
-          {error ? <p className="text-xs leading-5 text-red-700" role="alert">{error}</p> : null}
+          {error ? <p className="text-xs leading-5 text-destructive" role="alert">{error}</p> : null}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-slate-50" data-project-id={projectId}>
-      <div className="flex min-h-12 items-center gap-2 border-b border-slate-200 bg-white px-3">
-        <Bot className="text-blue-700" size={17} />
-        <span className="text-sm font-semibold text-slate-950">DeepSeek Agent</span>
-        <Badge className="ml-auto bg-emerald-50 text-emerald-700" variant="secondary">
+    <div className="flex h-full min-h-0 flex-col bg-background" data-project-id={projectId}>
+      <div className="flex min-h-12 items-center gap-2 border-b border-border bg-card px-3">
+        <Bot size={16} />
+        <span className="text-sm font-semibold text-foreground">DeepSeek Agent</span>
+        <Badge className="ml-auto" variant="secondary">
           {settings.maskedKey}
         </Badge>
         <Button
@@ -207,7 +206,7 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
           onClick={() => void verify()}
           size="icon-sm"
           title="验证连接"
-          variant="destructive"
+          variant="ghost"
         >
           <RefreshCw className={busy ? "animate-spin" : ""} />
         </Button>
@@ -222,7 +221,7 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
           <Trash2 />
         </Button>
       </div>
-      {error ? <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">{error}</div> : null}
+      {error ? <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">{error}</div> : null}
       <Tabs className="flex min-h-0 flex-1 flex-col" onValueChange={setActiveTab} value={activeTab}>
         <TabsList className="m-2 grid w-auto grid-cols-2 rounded-md" variant="default">
           <TabsTrigger value="conversation"><MessageSquare />会话</TabsTrigger>

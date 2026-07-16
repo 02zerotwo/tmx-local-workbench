@@ -132,9 +132,9 @@ describe("AuditPanel", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /进入审阅/ }));
     expect(await screen.findByText("应更贴合原文")).toBeInTheDocument();
-    // The inserted word is highlighted green in the diff.
+    // The inserted word is highlighted (monochrome, underlined) in the diff.
     await waitFor(() => {
-      const insert = container.querySelector(".bg-emerald-100");
+      const insert = container.querySelector(".underline");
       expect(insert?.textContent).toContain("the");
     });
 
