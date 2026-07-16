@@ -12,6 +12,7 @@ import {
   PencilLine,
   Search,
   Sparkles,
+  X,
 } from "lucide-react";
 import {
   startTransition,
@@ -41,7 +42,13 @@ import { AiModePanel } from "./ai/ai-mode-panel";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
   ResizableHandle,
@@ -79,17 +86,21 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "操作失败，请重试";
 }
 
-export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps) {
-  const [workspace, dispatch] = useReducer(
-    workspaceReducer,
-    undefined,
-    () => createWorkspaceState(),
+export function ProjectWorkspace({
+  api,
+  project,
+  onBack,
+}: ProjectWorkspaceProps) {
+  const [workspace, dispatch] = useReducer(workspaceReducer, undefined, () =>
+    createWorkspaceState(),
   );
   const [result, setResult] = useState<ProjectQueryResult>(EMPTY_RESULT);
   const [selectedRowId, setSelectedRowId] = useState("");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
+  const [exportProgress, setExportProgress] = useState<ExportProgress | null>(
+    null,
+  );
   const [exportedPath, setExportedPath] = useState("");
   const [history, setHistory] = useState<TranslationHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -110,128 +121,132 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
   const closingRef = useRef(false);
   const exportingRef = useRef(false);
 
-  const {
-    filters,
-    page,
-    pageSize,
-  } = workspace;
+  const { filters, page, pageSize } = workspace;
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
-    api.queryProject({
-      projectId: project.id,
-      filters,
-      page,
-      pageSize,
-    }).then((nextResult) => {
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-      lastSuccessfulPageRef.current = nextResult.page;
-      startTransition(() => {
-        setResult(nextResult);
-        setSelectedRowId((current) => {
-          const pendingSelection = pendingPageSelectionRef.current;
-          if (pendingSelection?.page === nextResult.page) {
-            pendingPageSelectionRef.current = null;
-            return pendingSelection.edge === "last"
-              ? nextResult.rows.at(-1)?.rowId ?? ""
-              : nextResult.rows[0]?.rowId ?? "";
-          }
-          return nextResult.rows.some(({ rowId }) => rowId === current)
-            ? current
-            : nextResult.rows[0]?.rowId ?? "";
-        });
-      });
-      setError("");
-    }).catch((queryError: unknown) => {
-      if (requestId === requestIdRef.current) {
-        pendingPageSelectionRef.current = null;
-        setError(errorMessage(queryError));
-        if (page !== lastSuccessfulPageRef.current) {
-          dispatch({ type: "setPage", page: lastSuccessfulPageRef.current });
+    api
+      .queryProject({
+        projectId: project.id,
+        filters,
+        page,
+        pageSize,
+      })
+      .then((nextResult) => {
+        if (requestId !== requestIdRef.current) {
+          return;
         }
-      }
-    }).finally(() => {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
-    });
-  }, [
-    api,
-    filters,
-    page,
-    pageSize,
-    project.id,
-    dataRefreshNonce,
-  ]);
+        lastSuccessfulPageRef.current = nextResult.page;
+        startTransition(() => {
+          setResult(nextResult);
+          setSelectedRowId((current) => {
+            const pendingSelection = pendingPageSelectionRef.current;
+            if (pendingSelection?.page === nextResult.page) {
+              pendingPageSelectionRef.current = null;
+              return pendingSelection.edge === "last"
+                ? (nextResult.rows.at(-1)?.rowId ?? "")
+                : (nextResult.rows[0]?.rowId ?? "");
+            }
+            return nextResult.rows.some(({ rowId }) => rowId === current)
+              ? current
+              : (nextResult.rows[0]?.rowId ?? "");
+          });
+        });
+        setError("");
+      })
+      .catch((queryError: unknown) => {
+        if (requestId === requestIdRef.current) {
+          pendingPageSelectionRef.current = null;
+          setError(errorMessage(queryError));
+          if (page !== lastSuccessfulPageRef.current) {
+            dispatch({ type: "setPage", page: lastSuccessfulPageRef.current });
+          }
+        }
+      })
+      .finally(() => {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
+      });
+  }, [api, filters, page, pageSize, project.id, dataRefreshNonce]);
 
   useEffect(() => api.onExportProgress(setExportProgress), [api]);
 
-  useEffect(() => api.onAppCloseRequested(() => {
-    if (closingRef.current) {
-      return;
-    }
-    if (exportingRef.current) {
-      setError("正在导出，请等待导出完成后再关闭应用");
-      return;
-    }
-    closingRef.current = true;
-    void (async () => {
-      try {
-        await editorRef.current?.flushUntilSaved();
-        await api.confirmAppClose();
-      } catch (closeError) {
-        closingRef.current = false;
-        setError(errorMessage(closeError));
-      }
-    })();
-  }), [api]);
+  useEffect(
+    () =>
+      api.onAppCloseRequested(() => {
+        if (closingRef.current) {
+          return;
+        }
+        if (exportingRef.current) {
+          setError("正在导出，请等待导出完成后再关闭应用");
+          return;
+        }
+        closingRef.current = true;
+        void (async () => {
+          try {
+            await editorRef.current?.flushUntilSaved();
+            await api.confirmAppClose();
+          } catch (closeError) {
+            closingRef.current = false;
+            setError(errorMessage(closeError));
+          }
+        })();
+      }),
+    [api],
+  );
 
-  const selectedRow = useMemo(() => result.rows.find(
-    ({ rowId }) => rowId === selectedRowId,
-  ) ?? null, [result.rows, selectedRowId]);
+  const selectedRow = useMemo(
+    () => result.rows.find(({ rowId }) => rowId === selectedRowId) ?? null,
+    [result.rows, selectedRowId],
+  );
   const selectedRowIndex = useMemo(
     () => result.rows.findIndex(({ rowId }) => rowId === selectedRowId),
     [result.rows, selectedRowId],
   );
   const pageTransitioning = loading || page !== result.page;
-  const canPrevious = !pageTransitioning
-    && selectedRowIndex >= 0
-    && (selectedRowIndex > 0 || result.page > 1);
-  const canNext = !pageTransitioning
-    && selectedRowIndex >= 0
-    && (selectedRowIndex < result.rows.length - 1 || result.page < result.pageCount);
+  const canPrevious =
+    !pageTransitioning &&
+    selectedRowIndex >= 0 &&
+    (selectedRowIndex > 0 || result.page > 1);
+  const canNext =
+    !pageTransitioning &&
+    selectedRowIndex >= 0 &&
+    (selectedRowIndex < result.rows.length - 1 ||
+      result.page < result.pageCount);
 
-  const loadHistory = useCallback(async (rowId: string) => {
-    const historyRequestId = ++historyRequestIdRef.current;
-    setHistoryLoading(true);
-    setHistoryError("");
-    try {
-      const nextHistory = await api.getTranslationHistory(project.id, rowId);
-      if (
-        historyRequestId === historyRequestIdRef.current
-        && selectedRowIdRef.current === rowId
-      ) {
-        setHistory(nextHistory);
+  const loadHistory = useCallback(
+    async (rowId: string) => {
+      const historyRequestId = ++historyRequestIdRef.current;
+      setHistoryLoading(true);
+      setHistoryError("");
+      try {
+        const nextHistory = await api.getTranslationHistory(project.id, rowId);
+        if (
+          historyRequestId === historyRequestIdRef.current &&
+          selectedRowIdRef.current === rowId
+        ) {
+          setHistory(nextHistory);
+        }
+      } catch (historyError) {
+        if (
+          historyRequestId === historyRequestIdRef.current &&
+          selectedRowIdRef.current === rowId
+        ) {
+          setHistoryError(errorMessage(historyError));
+        }
+      } finally {
+        if (
+          historyRequestId === historyRequestIdRef.current &&
+          selectedRowIdRef.current === rowId
+        ) {
+          setHistoryLoading(false);
+        }
       }
-    } catch (historyError) {
-      if (
-        historyRequestId === historyRequestIdRef.current
-        && selectedRowIdRef.current === rowId
-      ) {
-        setHistoryError(errorMessage(historyError));
-      }
-    } finally {
-      if (
-        historyRequestId === historyRequestIdRef.current
-        && selectedRowIdRef.current === rowId
-      ) {
-        setHistoryLoading(false);
-      }
-    }
-  }, [api, project.id]);
+    },
+    [api, project.id],
+  );
 
   useEffect(() => {
     selectedRowIdRef.current = selectedRowId;
@@ -256,18 +271,23 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
     }
   };
 
-  const saveTranslation = useCallback(async (rowId: string, update: TranslationTextUpdate) => {
-    const updated = await api.updateTranslation(project.id, rowId, update);
-    if (selectedRowIdRef.current === rowId) {
-      await loadHistory(rowId);
-    }
-    return updated;
-  }, [api, loadHistory, project.id]);
+  const saveTranslation = useCallback(
+    async (rowId: string, update: TranslationTextUpdate) => {
+      const updated = await api.updateTranslation(project.id, rowId, update);
+      if (selectedRowIdRef.current === rowId) {
+        await loadHistory(rowId);
+      }
+      return updated;
+    },
+    [api, loadHistory, project.id],
+  );
 
   const applySavedRow = useCallback((updated: TranslationUnitRow) => {
     setResult((current) => ({
       ...current,
-      rows: current.rows.map((row) => row.rowId === updated.rowId ? updated : row),
+      rows: current.rows.map((row) =>
+        row.rowId === updated.rowId ? updated : row,
+      ),
     }));
   }, []);
 
@@ -288,16 +308,16 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
       return;
     }
 
-    const adjacentIndex = direction === "previous"
-      ? selectedRowIndex - 1
-      : selectedRowIndex + 1;
+    const adjacentIndex =
+      direction === "previous" ? selectedRowIndex - 1 : selectedRowIndex + 1;
     const adjacentRow = result.rows[adjacentIndex];
     if (adjacentRow) {
       setSelectedRowId(adjacentRow.rowId);
       return;
     }
 
-    const nextPage = direction === "previous" ? result.page - 1 : result.page + 1;
+    const nextPage =
+      direction === "previous" ? result.page - 1 : result.page + 1;
     if (nextPage < 1 || nextPage > result.pageCount) {
       return;
     }
@@ -308,19 +328,21 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
     dispatch({ type: "setPage", page: nextPage });
   };
 
-  const restoreHistory = useCallback(async (entry: TranslationHistoryEntry) => {
-    await editorRef.current?.flushUntilSaved();
-    const updated = await api.updateTranslation(
-      project.id,
-      entry.rowId,
-      { sourceText: entry.sourceText, targetText: entry.targetText },
-    );
-    applySavedRow(updated);
-    if (selectedRowIdRef.current === entry.rowId) {
-      setEditorNonce((current) => current + 1);
-      await loadHistory(entry.rowId);
-    }
-  }, [api, applySavedRow, loadHistory, project.id]);
+  const restoreHistory = useCallback(
+    async (entry: TranslationHistoryEntry) => {
+      await editorRef.current?.flushUntilSaved();
+      const updated = await api.updateTranslation(project.id, entry.rowId, {
+        sourceText: entry.sourceText,
+        targetText: entry.targetText,
+      });
+      applySavedRow(updated);
+      if (selectedRowIdRef.current === entry.rowId) {
+        setEditorNonce((current) => current + 1);
+        await loadHistory(entry.rowId);
+      }
+    },
+    [api, applySavedRow, loadHistory, project.id],
+  );
 
   const exportProject = async (scope: "all" | "filtered") => {
     exportingRef.current = true;
@@ -384,13 +406,30 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           <Languages size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-semibold text-slate-950">{project.name}</h1>
+          <h1 className="truncate text-base font-semibold text-slate-950">
+            {project.name}
+          </h1>
           <p className="truncate text-xs text-slate-500">{project.fileName}</p>
         </div>
         <div className="hidden items-center gap-4 text-xs text-slate-500 xl:flex">
-          <span>翻译行 <strong className="ml-1 text-slate-800">{project.totalUnits.toLocaleString()}</strong></span>
-          <span>已修改 <strong className="ml-1 text-amber-700">{project.changedUnits.toLocaleString()}</strong></span>
-          <span>空译文 <strong className="ml-1 text-red-700">{project.emptyUnits.toLocaleString()}</strong></span>
+          <span>
+            翻译行{" "}
+            <strong className="ml-1 text-slate-800">
+              {project.totalUnits.toLocaleString()}
+            </strong>
+          </span>
+          <span>
+            已修改{" "}
+            <strong className="ml-1 text-amber-700">
+              {project.changedUnits.toLocaleString()}
+            </strong>
+          </span>
+          <span>
+            空译文{" "}
+            <strong className="ml-1 text-red-700">
+              {project.emptyUnits.toLocaleString()}
+            </strong>
+          </span>
         </div>
         <Button
           className="h-9 text-slate-700"
@@ -409,21 +448,39 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           type="button"
           variant="ghost"
         >
-          {exporting ? <Loader2 className="animate-spin" size={16} /> : <FileSpreadsheet size={16} />}
+          {exporting ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : (
+            <FileSpreadsheet size={16} />
+          )}
           导出全部
         </Button>
       </header>
 
       <div className="h-1 shrink-0 bg-slate-200">
         {exportProgress && exporting ? (
-          <Progress aria-label="导出进度" className="h-1 rounded-none" value={exportProgress.percent} />
+          <Progress
+            aria-label="导出进度"
+            className="h-1 rounded-none"
+            value={exportProgress.percent}
+          />
         ) : null}
       </div>
 
       {error ? (
-        <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-red-200 bg-red-50 px-4 text-sm text-red-800" role="alert">
+        <div
+          className="flex min-h-10 shrink-0 items-center justify-between border-b border-red-200 bg-red-50 px-4 text-sm text-red-800"
+          role="alert"
+        >
           <span className="truncate">{error}</span>
-          <Button onClick={() => setError("")} size="sm" type="button" variant="ghost">关闭</Button>
+          <Button
+            onClick={() => setError("")}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            关闭
+          </Button>
         </div>
       ) : null}
 
@@ -451,14 +508,16 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
         </div>
       ) : null}
 
-      <section className="grid shrink-0 grid-cols-[minmax(260px,1fr)_104px_168px_270px_128px] gap-2 border-b border-slate-200 bg-white p-2">
-        <label className="relative">
-          <span className="sr-only">搜索翻译</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <Input
+      <section className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-white p-2">
+        <InputGroup className="h-10 min-w-64 flex-1 bg-white">
+          <InputGroupAddon>
+            <Search size={16} />
+          </InputGroupAddon>
+          <InputGroupInput
             aria-label="搜索翻译"
-            className="h-10 w-full rounded border border-slate-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-            onChange={(event) => dispatch({ type: "setDraftQuery", query: event.target.value })}
+            onChange={(event) =>
+              dispatch({ type: "setDraftQuery", query: event.target.value })
+            }
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 void commitAction({ type: "submitSearch" });
@@ -468,9 +527,23 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
             role="searchbox"
             value={workspace.draftQuery}
           />
-        </label>
+          {workspace.draftQuery ? (
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                aria-label="清空搜索"
+                onClick={() => {
+                  dispatch({ type: "setDraftQuery", query: "" });
+                  void commitAction({ type: "submitSearch" });
+                }}
+                size="icon-sm"
+              >
+                <X size={14} />
+              </InputGroupButton>
+            </InputGroupAddon>
+          ) : null}
+        </InputGroup>
         <Button
-          className="h-10 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+          className="h-10 shrink-0 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
           onClick={() => void commitAction({ type: "submitSearch" })}
           type="button"
           variant="ghost"
@@ -479,37 +552,67 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           搜索
         </Button>
         <Select
-          onValueChange={(value) => void commitAction({
+          onValueChange={(value) =>
+            void commitAction({
               type: "setTargetLanguage",
               targetLanguage: value === "__all__" ? "" : value,
-            })}
+            })
+          }
           value={filters.targetLanguage || "__all__"}
         >
-          <SelectTrigger aria-label="目标语言" className="h-10 w-full rounded-md bg-white">
-            <SelectValue />
+          <SelectTrigger
+            aria-label="目标语言"
+            className="h-10 w-44 shrink-0 bg-white"
+          >
+            <SelectValue className="h-10" />
           </SelectTrigger>
           <SelectContent position="popper">
             <SelectItem value="__all__">全部目标语言</SelectItem>
             {project.targetLanguages.map((language) => (
-              <SelectItem key={language} value={language}>{language}</SelectItem>
+              <SelectItem key={language} value={language}>
+                {language}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <div className="grid h-10 grid-cols-3 rounded border border-slate-300 bg-slate-50 p-0.5" role="group" aria-label="翻译状态">
-          <StatusButton active={filters.status === "all"} label="全部" onClick={() => void commitAction({ type: "setStatus", status: "all" })} />
-          <StatusButton active={filters.status === "changed"} label="已修改" onClick={() => void commitAction({ type: "setStatus", status: "changed" })} />
-          <StatusButton active={filters.status === "empty"} label="只看空译文" onClick={() => void commitAction({ type: "setStatus", status: "empty" })} />
-        </div>
-        <label className="flex h-10 cursor-pointer items-center gap-2 rounded border border-slate-300 px-3 text-sm text-slate-700">
+        <ButtonGroup
+          aria-label="翻译状态"
+          className="grid h-10 shrink-0 grid-cols-3 rounded-lg bg-slate-100 p-1"
+        >
+          <StatusButton
+            active={filters.status === "all"}
+            label="全部"
+            onClick={() =>
+              void commitAction({ type: "setStatus", status: "all" })
+            }
+          />
+          <StatusButton
+            active={filters.status === "changed"}
+            label="已修改"
+            onClick={() =>
+              void commitAction({ type: "setStatus", status: "changed" })
+            }
+          />
+          <StatusButton
+            active={filters.status === "empty"}
+            label="只看空译文"
+            onClick={() =>
+              void commitAction({ type: "setStatus", status: "empty" })
+            }
+          />
+        </ButtonGroup>
+        <Label className="h-10 shrink-0 cursor-pointer rounded-lg border border-slate-300 px-3 text-sm font-normal text-slate-700 transition-colors hover:bg-slate-50">
           <Checkbox
             checked={filters.duplicateOnly}
-            onCheckedChange={(checked) => void commitAction({
-              type: "setDuplicateOnly",
-              duplicateOnly: checked === true,
-            })}
+            onCheckedChange={(checked) =>
+              void commitAction({
+                type: "setDuplicateOnly",
+                duplicateOnly: checked === true,
+              })
+            }
           />
           仅重复项
-        </label>
+        </Label>
       </section>
 
       <section className="min-h-0 flex-1">
@@ -537,8 +640,12 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
                 selectedRowId={selectedRowId}
               />
               <Pagination
-                onPageChange={(nextPage) => void commitAction({ type: "setPage", page: nextPage })}
-                onPageSizeChange={(nextSize) => void commitAction({ type: "setPageSize", pageSize: nextSize })}
+                onPageChange={(nextPage) =>
+                  void commitAction({ type: "setPage", page: nextPage })
+                }
+                onPageSizeChange={(nextSize) =>
+                  void commitAction({ type: "setPageSize", pageSize: nextSize })
+                }
                 page={result.page}
                 pageCount={result.pageCount}
                 pageSize={workspace.pageSize}
@@ -550,14 +657,22 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
           <ResizableHandle aria-label="调整工作区宽度" withHandle />
 
           <ResizablePanel defaultSize="50" id="detail-workspace" minSize="35%">
-            <div className="flex h-full min-h-0 flex-col bg-slate-50" data-testid="workspace-detail-panel">
+            <div
+              className="flex h-full min-h-0 flex-col bg-slate-50"
+              data-testid="workspace-detail-panel"
+            >
               <div className="flex h-12 shrink-0 items-center border-b border-slate-200 bg-white px-3">
-                <ButtonGroup aria-label="工作模式" className="grid w-full grid-cols-2 rounded-md bg-slate-100 p-1">
+                <ButtonGroup
+                  aria-label="工作模式"
+                  className="grid w-full grid-cols-2 rounded-md bg-slate-100 p-1"
+                >
                   <Button
                     aria-pressed={panelMode === "edit"}
-                    className={panelMode === "edit"
-                      ? "bg-white text-slate-950 shadow-sm hover:bg-white"
-                      : "text-slate-500 hover:bg-white/70 hover:text-slate-900"}
+                    className={
+                      panelMode === "edit"
+                        ? "bg-white text-slate-950 shadow-sm hover:bg-white"
+                        : "text-slate-500 hover:bg-white/70 hover:text-slate-900"
+                    }
                     onClick={() => setPanelMode("edit")}
                     size="sm"
                     type="button"
@@ -568,9 +683,11 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
                   </Button>
                   <Button
                     aria-pressed={panelMode === "ai"}
-                    className={panelMode === "ai"
-                      ? "bg-white text-slate-950 shadow-sm hover:bg-white"
-                      : "text-slate-500 hover:bg-white/70 hover:text-slate-900"}
+                    className={
+                      panelMode === "ai"
+                        ? "bg-white text-slate-950 shadow-sm hover:bg-white"
+                        : "text-slate-500 hover:bg-white/70 hover:text-slate-900"
+                    }
                     onClick={() => setPanelMode("ai")}
                     size="sm"
                     type="button"
@@ -585,7 +702,9 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
                 {panelMode === "ai" ? (
                   <AiModePanel
                     api={api}
-                    onApplied={() => setDataRefreshNonce((current) => current + 1)}
+                    onApplied={() =>
+                      setDataRefreshNonce((current) => current + 1)
+                    }
                     projectId={project.id}
                     targetLanguages={project.targetLanguages}
                   />
@@ -621,14 +740,24 @@ export function ProjectWorkspace({ api, project, onBack }: ProjectWorkspaceProps
   );
 }
 
-function StatusButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+function StatusButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <Button
       aria-label={label}
       aria-pressed={active}
-      className={active
-        ? "cursor-pointer rounded bg-white text-xs font-medium text-blue-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        : "cursor-pointer rounded text-xs font-medium text-slate-600 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500"}
+      className={
+        active
+          ? "bg-white text-xs font-medium text-blue-700 shadow-sm hover:bg-white"
+          : "text-xs font-medium text-slate-500 hover:bg-white/70 hover:text-slate-900"
+      }
       onClick={onClick}
       size="sm"
       type="button"
