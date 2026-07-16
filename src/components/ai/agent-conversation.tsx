@@ -84,7 +84,8 @@ function reduceLivePart(
     if (event.status === "running") {
       if (
         parts.some(
-          (part) => part.type === "tool" && part.toolCallId === event.toolCallId,
+          (part) =>
+            part.type === "tool" && part.toolCallId === event.toolCallId,
         )
       ) {
         return parts;
@@ -116,7 +117,9 @@ function reduceLivePart(
 
 function getText(parts: AiMessagePart[]): string {
   return parts
-    .filter((part): part is { type: "text"; text: string } => part.type === "text")
+    .filter(
+      (part): part is { type: "text"; text: string } => part.type === "text",
+    )
     .map((part) => part.text)
     .join("\n");
 }
@@ -364,7 +367,7 @@ export function AgentConversation({
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50 px-2">
         <Button
           aria-label="历史会话"
-          className="h-7 gap-1.5 px-2 text-xs text-slate-600"
+          className="h-7 gap-1.5 px-2 rounded-md"
           onClick={() => setHistoryOpen(true)}
           size="sm"
           title="历史会话"
