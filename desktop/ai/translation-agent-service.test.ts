@@ -34,7 +34,7 @@ describe("TranslationAgentService", () => {
       repository,
       generateReply: async ({ onEvent }) => {
         onEvent({ type: "text-delta", delta: "检查完成" });
-        return "检查完成";
+        return { parts: [{ type: "text", text: "检查完成" }], revisionIds: [] };
       },
     });
     const session = service.createSession(project.id, "新会话", "deepseek-v4-flash");
@@ -103,7 +103,7 @@ describe("TranslationAgentService", () => {
       generateReply: async () => {
         attempt += 1;
         if (attempt === 1) throw new Error("网络中断");
-        return "重试完成";
+        return { parts: [{ type: "text", text: "重试完成" }], revisionIds: [] };
       },
     });
     const session = service.createSession(project.id, "重试会话", "deepseek-v4-flash");

@@ -2,6 +2,7 @@
 
 import {
   Bot,
+  Check,
   History,
   MessageSquarePlus,
   Send,
@@ -34,10 +35,13 @@ import {
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
 import { Tool, ToolHeader } from "@/components/ai-elements/tool";
+import { AssistantMessageParts } from "@/components/ai/assistant-message-parts";
 import { MarkdownResponse } from "@/components/ai/markdown-response";
 import { SessionHistoryDrawer } from "@/components/ai/session-history-drawer";
 import { Button } from "@/components/ui/button";
 import type {
+  AiAgentRevisionRecord,
+  AiMessagePart,
   AiMessageRecord,
   AiSessionRecord,
   TmxDesktopApi,
@@ -52,11 +56,15 @@ type AgentApi = Pick<
   | "stopAiMessage"
   | "retryAiMessage"
   | "onAiAgentEvent"
+  | "listAiAgentRevisions"
+  | "applyAiAgentRevisions"
+  | "ignoreAiAgentRevision"
 >;
 
 type AgentConversationProps = {
   api: AgentApi;
   projectId: string;
+  onApplied?: () => void;
 };
 
 type ToolState = {
@@ -64,18 +72,9 @@ type ToolState = {
   status: "running" | "complete" | "error";
 };
 
-function getText(message: AiMessageRecord): string {
-  return message.parts
-    .filter((part): part is { type: "text"; text: string } =>
-      Boolean(
-        part &&
-        typeof part === "object" &&
-        "type" in part &&
-        "text" in part &&
-        part.type === "text" &&
-        typeof part.text === "string",
-      ),
-    )
+function getText(parts: AiMessagePart[]): string {
+  return parts
+    .filter((part): part is { type: "text"; text: string } => part.type === "text")
     .map((part) => part.text)
     .join("\n");
 }
@@ -89,10 +88,15 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "AI 会话操作失败";
 }
 
-export function AgentConversation({ api, projectId }: AgentConversationProps) {
+export function AgentConversation({
+  api,
+  projectId,
+  onApplied,
+}: AgentConversationProps) {
   const [sessions, setSessions] = useState<AiSessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AiMessageRecord[]>([]);
+  const [revisions, setRevisions] = useState<AiAgentRevisionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -100,11 +104,21 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
   const [reasoning, setReasoning] = useState("");
   const [tools, setTools] = useState<ToolState[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [busyRevisionId, setBusyRevisionId] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const activeSessionIdRef = useRef<string | null>(null);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions],
+  );
+  const revisionsById = useMemo(
+    () => new Map(revisions.map((revision) => [revision.id, revision])),
+    [revisions],
+  );
+  const pendingRevisions = useMemo(
+    () => revisions.filter((revision) => revision.status === "pending"),
+    [revisions],
   );
   const checkpointSaved = messages.some(
     (message) => message.role === "assistant" && message.status === "complete",
@@ -152,16 +166,26 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
     [api],
   );
 
+  const loadRevisions = useCallback(
+    async (sessionId: string) => {
+      const nextRevisions = await api.listAiAgentRevisions(sessionId);
+      setRevisions(nextRevisions);
+    },
+    [api],
+  );
+
   useEffect(() => {
     if (!activeSessionId) {
       setMessages([]);
+      setRevisions([]);
       return;
     }
     setError("");
     loadMessages(activeSessionId).catch((loadError: unknown) => {
       setError(getErrorMessage(loadError));
     });
-  }, [activeSessionId, loadMessages]);
+    loadRevisions(activeSessionId).catch(() => undefined);
+  }, [activeSessionId, loadMessages, loadRevisions]);
 
   useEffect(
     () =>
@@ -181,6 +205,11 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
               { name: event.name, status: event.status },
             ];
           });
+        } else if (event.type === "revision") {
+          setRevisions((current) => [
+            ...current.filter((item) => item.id !== event.revision.id),
+            event.revision,
+          ]);
         }
       }),
     [api],
@@ -196,6 +225,7 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
       activeSessionIdRef.current = created.id;
       setActiveSessionId(created.id);
       setMessages([]);
+      setRevisions([]);
       return created;
     },
     [api, projectId],
@@ -233,6 +263,7 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
       ]);
       await api.sendAiMessage(session.id, "main", trimmed);
       await loadMessages(session.id);
+      await loadRevisions(session.id);
       await loadSessions();
       setStreamedText("");
       setReasoning("");
@@ -268,6 +299,7 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
     try {
       await api.retryAiMessage(sessionId, "main");
       await loadMessages(sessionId);
+      await loadRevisions(sessionId);
       await loadSessions();
     } catch (retryError) {
       setError(getErrorMessage(retryError));
@@ -277,6 +309,39 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
       setReasoning("");
       setTools([]);
       setSending(false);
+    }
+  };
+
+  const applyRevisions = async (ids: string[], bulk: boolean) => {
+    const sessionId = activeSessionIdRef.current;
+    if (!sessionId || ids.length === 0) return;
+    if (bulk) setBulkBusy(true);
+    else setBusyRevisionId(ids[0]);
+    setError("");
+    try {
+      await api.applyAiAgentRevisions(sessionId, ids);
+      await loadRevisions(sessionId);
+      onApplied?.();
+    } catch (applyError) {
+      setError(getErrorMessage(applyError));
+    } finally {
+      setBusyRevisionId(null);
+      setBulkBusy(false);
+    }
+  };
+
+  const ignoreRevision = async (revisionId: string) => {
+    const sessionId = activeSessionIdRef.current;
+    if (!sessionId) return;
+    setBusyRevisionId(revisionId);
+    setError("");
+    try {
+      await api.ignoreAiAgentRevision(revisionId);
+      await loadRevisions(sessionId);
+    } catch (ignoreError) {
+      setError(getErrorMessage(ignoreError));
+    } finally {
+      setBusyRevisionId(null);
     }
   };
 
@@ -317,7 +382,7 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
           <ConversationContent className="gap-5 p-3">
             {!loading && messages.length === 0 && !sending ? (
               <ConversationEmptyState
-                description="可询问术语、译文质量、项目统计，或继续历史检查。"
+                description="可让我搜索并审查译文、自动给出修改建议，审阅后一键应用。"
                 icon={<Bot size={24} />}
                 title="开始项目对话"
               />
@@ -327,8 +392,18 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
                 from={message.role === "user" ? "user" : "assistant"}
                 key={message.id}
               >
-                <MessageContent>
-                  <MarkdownResponse content={getText(message)} />
+                <MessageContent className={message.role === "user" ? undefined : "w-full"}>
+                  {message.role === "user" ? (
+                    <MarkdownResponse content={getText(message.parts)} />
+                  ) : (
+                    <AssistantMessageParts
+                      busyRevisionId={busyRevisionId}
+                      onApplyRevision={(id) => void applyRevisions([id], false)}
+                      onIgnoreRevision={(id) => void ignoreRevision(id)}
+                      parts={message.parts}
+                      revisionsById={revisionsById}
+                    />
+                  )}
                 </MessageContent>
               </Message>
             ))}
@@ -395,12 +470,37 @@ export function AgentConversation({ api, projectId }: AgentConversationProps) {
             ) : null}
           </div>
         ) : null}
+
+        {pendingRevisions.length > 0 ? (
+          <div className="flex items-center gap-2 border-t border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <span className="min-w-0 flex-1">
+              {pendingRevisions.length} 条修改建议待审阅
+            </span>
+            <Button
+              className="h-7 gap-1 px-2 text-amber-800 hover:bg-amber-100"
+              disabled={bulkBusy || busyRevisionId !== null}
+              onClick={() =>
+                void applyRevisions(
+                  pendingRevisions.map((revision) => revision.id),
+                  true,
+                )
+              }
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              <Check size={13} />
+              全部应用
+            </Button>
+          </div>
+        ) : null}
+
         <div className="border-t border-slate-200 bg-white p-2">
           <PromptInput onSubmit={({ text }) => sendMessage(text)}>
             <PromptInputBody>
               <PromptInputTextarea
                 disabled={sending}
-                placeholder="向 DeepSeek 询问当前项目..."
+                placeholder="向 DeepSeek 询问，或让它审查并修改当前项目..."
               />
             </PromptInputBody>
             <PromptInputFooter>

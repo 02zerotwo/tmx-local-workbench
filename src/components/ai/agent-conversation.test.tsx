@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type {
   AiAgentEvent,
+  AiAgentRevisionRecord,
   AiMessageRecord,
   AiSessionRecord,
   TmxDesktopApi,
@@ -17,6 +18,9 @@ type AgentApi = Pick<
   | "stopAiMessage"
   | "retryAiMessage"
   | "onAiAgentEvent"
+  | "listAiAgentRevisions"
+  | "applyAiAgentRevisions"
+  | "ignoreAiAgentRevision"
 >;
 
 const session: AiSessionRecord = {
@@ -68,6 +72,9 @@ function createApi(overrides: Partial<AgentApi> = {}): AgentApi {
       message("message-retry", "assistant", "已重试"),
     ),
     onAiAgentEvent: vi.fn().mockReturnValue(() => undefined),
+    listAiAgentRevisions: vi.fn().mockResolvedValue([]),
+    applyAiAgentRevisions: vi.fn().mockResolvedValue({ applied: 0, stale: 0, missing: 0 }),
+    ignoreAiAgentRevision: vi.fn(),
     ...overrides,
   };
 }
@@ -98,7 +105,12 @@ describe("AgentConversation", () => {
         });
         listener?.({
           sessionId: session.id,
-          event: { type: "tool", name: "searchTranslationUnits", status: "running" },
+          event: {
+            type: "tool",
+            toolCallId: "call-1",
+            name: "searchTranslationUnits",
+            status: "running",
+          },
         });
         listener?.({
           sessionId: session.id,
@@ -116,7 +128,9 @@ describe("AgentConversation", () => {
 
     render(<AgentConversation api={api} projectId="project-1" />);
 
-    const input = await screen.findByPlaceholderText("向 DeepSeek 询问当前项目...");
+    const input = await screen.findByPlaceholderText(
+      "向 DeepSeek 询问，或让它审查并修改当前项目...",
+    );
     fireEvent.change(input, { target: { value: "检查当前筛选结果" } });
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
 
@@ -130,5 +144,72 @@ describe("AgentConversation", () => {
     await waitFor(() => expect(api.listAiMessages).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("已完成当前范围检查。")).toBeVisible();
     expect(await screen.findByText("检查点已保存")).toBeVisible();
+  });
+
+  it("renders a staged revision proposal from an ordered tool part and applies it", async () => {
+    const assistantWithProposal: AiMessageRecord = {
+      id: "message-proposal",
+      sessionId: session.id,
+      parentMessageId: null,
+      branchId: "main",
+      role: "assistant",
+      parts: [
+        { type: "text", text: "发现一处译文需要修改。" },
+        {
+          type: "tool",
+          toolCallId: "call-9",
+          toolName: "proposeRevision",
+          state: "output-available",
+          input: { rowId: "row-1", suggestedTargetText: "Reset the alarm now" },
+          output: {
+            staged: true,
+            revisionId: "rev-1",
+            rowId: "row-1",
+            suggestedTargetText: "Reset the alarm now",
+          },
+        },
+      ],
+      status: "complete",
+      inputTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0,
+      createdAt: "2026-07-15T06:00:00.000Z",
+      updatedAt: "2026-07-15T06:00:00.000Z",
+    };
+    const revision: AiAgentRevisionRecord = {
+      id: "rev-1",
+      sessionId: session.id,
+      messageId: "message-proposal",
+      toolCallId: "call-9",
+      projectId: "project-1",
+      rowId: "row-1",
+      sourceLang: "zh-CN",
+      sourceText: "报警复位步骤",
+      targetLang: "en-US",
+      originalTargetText: "Reset alarm",
+      suggestedTargetText: "Reset the alarm now",
+      category: "accuracy",
+      reason: "更贴合原文",
+      confidence: 0.9,
+      contentHash: "hash-1",
+      status: "pending",
+      createdAt: "2026-07-15T06:00:00.000Z",
+      updatedAt: "2026-07-15T06:00:00.000Z",
+      appliedAt: null,
+    };
+    const api = createApi({
+      listAiMessages: vi.fn().mockResolvedValue([assistantWithProposal]),
+      listAiAgentRevisions: vi.fn().mockResolvedValue([revision]),
+    });
+
+    render(<AgentConversation api={api} projectId="project-1" />);
+
+    expect(await screen.findByText("Reset the alarm now")).toBeVisible();
+    expect(screen.getByText("修改建议")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "应用" }));
+    await waitFor(() =>
+      expect(api.applyAiAgentRevisions).toHaveBeenCalledWith("session-1", ["rev-1"]),
+    );
   });
 });

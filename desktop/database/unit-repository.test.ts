@@ -1092,8 +1092,8 @@ describe("translation history schema migration", () => {
 
       runMigrations(db);
 
-      expect(DATABASE_VERSION).toBe(4);
-      expect(db.pragma("user_version", { simple: true })).toBe(4);
+      expect(DATABASE_VERSION).toBe(5);
+      expect(db.pragma("user_version", { simple: true })).toBe(5);
       const projects = new ProjectRepository(db);
       const repository = new UnitRepository(db, {
         now: () => SECOND_TIMESTAMP,
@@ -1186,8 +1186,8 @@ describe("translation history schema migration", () => {
       db.pragma("foreign_keys = ON");
       runMigrations(db);
 
-      expect(DATABASE_VERSION).toBe(4);
-      expect(db.pragma("user_version", { simple: true })).toBe(4);
+      expect(DATABASE_VERSION).toBe(5);
+      expect(db.pragma("user_version", { simple: true })).toBe(5);
       expect(db.prepare(`
         SELECT name
         FROM sqlite_master

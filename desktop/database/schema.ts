@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 const MIGRATION_V1 = `
   CREATE TABLE projects (
@@ -376,6 +376,38 @@ const MIGRATION_V4 = `
     ON ai_audit_apply_items(apply_set_id, selected);
 `;
 
+const MIGRATION_V5 = `
+  CREATE TABLE ai_agent_revisions (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES ai_agent_sessions(id) ON DELETE CASCADE,
+    message_id TEXT REFERENCES ai_agent_messages(id) ON DELETE SET NULL,
+    tool_call_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    row_id TEXT NOT NULL,
+    source_lang TEXT NOT NULL,
+    source_text TEXT NOT NULL,
+    target_lang TEXT NOT NULL,
+    original_target_text TEXT NOT NULL,
+    suggested_target_text TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'accuracy',
+    reason TEXT NOT NULL DEFAULT '',
+    confidence REAL NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+    content_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending'
+      CHECK (status IN ('pending', 'applied', 'ignored', 'stale')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    applied_at TEXT,
+    UNIQUE(session_id, tool_call_id),
+    FOREIGN KEY (project_id, row_id)
+      REFERENCES translation_units(project_id, row_id)
+      ON DELETE CASCADE
+  );
+
+  CREATE INDEX idx_ai_agent_revisions_session_status
+    ON ai_agent_revisions(session_id, status, created_at);
+`;
+
 export function runMigrations(db: Database.Database): void {
   const migrate = db.transaction(() => {
     const currentVersion = db.pragma("user_version", { simple: true }) as number;
@@ -408,6 +440,11 @@ export function runMigrations(db: Database.Database): void {
     if (currentVersion < 4) {
       db.exec(MIGRATION_V4);
       db.pragma("user_version = 4");
+    }
+
+    if (currentVersion < 5) {
+      db.exec(MIGRATION_V5);
+      db.pragma("user_version = 5");
     }
   });
 

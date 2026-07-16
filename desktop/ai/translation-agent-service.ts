@@ -1,4 +1,8 @@
 import type {
+  AiMessagePart,
+  AiAgentRevisionRecord,
+} from "../../src/lib/desktop-types";
+import type {
   AiMessage,
   AiSession,
   AiAgentRepository,
@@ -8,18 +12,33 @@ export type AiAgentRuntimeEvent =
   | { type: "status"; status: "thinking" | "using-tool" | "complete" }
   | { type: "text-delta"; delta: string }
   | { type: "reasoning-delta"; delta: string }
-  | { type: "tool"; name: string; status: "running" | "complete" | "error" };
+  | {
+      type: "tool";
+      toolCallId: string;
+      name: string;
+      status: "running" | "complete" | "error";
+      input?: unknown;
+      output?: unknown;
+    }
+  | { type: "revision"; revision: AiAgentRevisionRecord };
+
+export type GenerateReplyResult = {
+  parts: AiMessagePart[];
+  revisionIds: string[];
+};
 
 export type GenerateReply = (input: {
   session: AiSession;
   messages: AiMessage[];
   onEvent: (event: AiAgentRuntimeEvent) => void;
   abortSignal?: AbortSignal;
-}) => Promise<string>;
+}) => Promise<GenerateReplyResult>;
 
 type TranslationAgentServiceOptions = {
   repository: AiAgentRepository;
   generateReply: GenerateReply;
+  /** 在助手消息落库后，把本轮暂存的修改建议关联到该消息（用于清理与查询）。 */
+  linkRevisions?: (messageId: string, revisionIds: string[]) => void;
 };
 
 export class TranslationAgentService {
@@ -63,7 +82,7 @@ export class TranslationAgentService {
     this.activeControllers.get(input.sessionId)?.abort();
     this.activeControllers.set(input.sessionId, controller);
     try {
-      const text = await this.options.generateReply({
+      const { parts, revisionIds } = await this.options.generateReply({
         session,
         messages,
         onEvent: input.onEvent,
@@ -74,9 +93,12 @@ export class TranslationAgentService {
         parentMessageId: userMessage.id,
         branchId: input.branchId,
         role: "assistant",
-        parts: [{ type: "text", text }],
+        parts: parts.length > 0 ? parts : [{ type: "text", text: "" }],
         status: "complete",
       });
+      if (revisionIds.length > 0) {
+        this.options.linkRevisions?.(assistantMessage.id, revisionIds);
+      }
       this.options.repository.createCheckpoint({
         sessionId: input.sessionId,
         branchId: input.branchId,
@@ -136,7 +158,7 @@ export class TranslationAgentService {
     this.activeControllers.set(input.sessionId, controller);
 
     try {
-      const text = await this.options.generateReply({
+      const { parts, revisionIds } = await this.options.generateReply({
         session,
         messages,
         onEvent: input.onEvent,
@@ -147,9 +169,12 @@ export class TranslationAgentService {
         parentMessageId: userMessage.id,
         branchId: input.branchId,
         role: "assistant",
-        parts: [{ type: "text", text }],
+        parts: parts.length > 0 ? parts : [{ type: "text", text: "" }],
         status: "complete",
       });
+      if (revisionIds.length > 0) {
+        this.options.linkRevisions?.(assistantMessage.id, revisionIds);
+      }
       this.options.repository.createCheckpoint({
         sessionId: input.sessionId,
         branchId: input.branchId,

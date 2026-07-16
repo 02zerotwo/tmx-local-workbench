@@ -20,6 +20,7 @@ import type { UnitRepository } from "../database/unit-repository";
 import type { DeepSeekSettingsService } from "../ai/settings-service";
 import type { TranslationAgentService } from "../ai/translation-agent-service";
 import type { AuditWorkflowService } from "../ai/audit-workflow";
+import type { AgentRevisionService } from "../ai/agent-revision-service";
 import type { AuditBoundaries, AuditFindingDecision } from "../database/ai-audit-repository";
 import { importTmxProject } from "../import/import-service";
 import { IPC_CHANNELS } from "./channels";
@@ -77,6 +78,10 @@ export type DesktopHandlerDependencies = {
     | "pauseJob"
     | "resumeJob"
     | "applyConfirmed"
+  >;
+  aiRevisionService?: Pick<
+    AgentRevisionService,
+    "listRevisions" | "applyRevisions" | "ignoreRevision"
   >;
   exportProject?: ExportProjectOperation;
   backupDatabase?: (suggestedFilePath: string) => Promise<string>;
@@ -515,9 +520,43 @@ export function registerDesktopHandlers(
       requiredString(jobId, "审查任务 ID"),
     );
   });
+  register(dependencies, requests.listAiAgentRevisions, (event, sessionId) => {
+    requireTrustedRevisionSender(dependencies, event);
+    return dependencies.aiRevisionService!.listRevisions(
+      requiredString(sessionId, "会话 ID"),
+    );
+  });
+  register(dependencies, requests.applyAiAgentRevisions, (event, sessionId, revisionIds) => {
+    requireTrustedRevisionSender(dependencies, event);
+    requiredString(sessionId, "会话 ID");
+    if (
+      !Array.isArray(revisionIds)
+      || revisionIds.length === 0
+      || !revisionIds.every((id) => typeof id === "string" && id.trim())
+    ) {
+      throw new Error("修改建议 ID 列表参数无效");
+    }
+    return dependencies.aiRevisionService!.applyRevisions(revisionIds as string[]);
+  });
+  register(dependencies, requests.ignoreAiAgentRevision, (event, revisionId) => {
+    requireTrustedRevisionSender(dependencies, event);
+    return dependencies.aiRevisionService!.ignoreRevision(
+      requiredString(revisionId, "修改建议 ID"),
+    );
+  });
   register(dependencies, requests.confirmAppClose, () => {
     dependencies.confirmAppClose();
   });
+}
+
+function requireTrustedRevisionSender(
+  dependencies: DesktopHandlerDependencies,
+  event: IpcMainInvokeEvent,
+): void {
+  requireTrustedAiSender(dependencies, event);
+  if (!dependencies.aiRevisionService) {
+    throw new Error("AI 修改建议服务尚未就绪");
+  }
 }
 
 function requireTrustedAuditSender(

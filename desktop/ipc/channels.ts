@@ -42,6 +42,9 @@ export const IPC_CHANNELS = {
     decideAiAuditFinding: "tmx-workbench:ai:audits:findings:decide",
     acceptAllAiAuditFindings: "tmx-workbench:ai:audits:findings:accept-all",
     applyAiAudit: "tmx-workbench:ai:audits:apply",
+    listAiAgentRevisions: "tmx-workbench:ai:revisions:list",
+    applyAiAgentRevisions: "tmx-workbench:ai:revisions:apply",
+    ignoreAiAgentRevision: "tmx-workbench:ai:revisions:ignore",
     confirmAppClose: "tmx-workbench:application:confirm-close",
   } satisfies Record<RequestMethodName, string>,
   events: {

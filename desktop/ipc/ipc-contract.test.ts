@@ -42,6 +42,9 @@ const METHOD_NAMES = [
   "decideAiAuditFinding",
   "acceptAllAiAuditFindings",
   "applyAiAudit",
+  "listAiAgentRevisions",
+  "applyAiAgentRevisions",
+  "ignoreAiAgentRevision",
   "confirmAppClose",
 ] as const satisfies ReadonlyArray<keyof TmxDesktopApi>;
 
@@ -112,6 +115,9 @@ describe("desktop IPC contract", () => {
     await api.decideAiAuditFinding("finding-1", "edited", "Edited target");
     await api.acceptAllAiAuditFindings("audit-1");
     await api.applyAiAudit("audit-1");
+    await api.listAiAgentRevisions("session-1");
+    await api.applyAiAgentRevisions("session-1", ["rev-1"]);
+    await api.ignoreAiAgentRevision("rev-1");
     await api.confirmAppClose();
 
     expect(invoke.mock.calls).toEqual([
@@ -154,6 +160,9 @@ describe("desktop IPC contract", () => {
       [IPC_CHANNELS.requests.decideAiAuditFinding, "finding-1", "edited", "Edited target"],
       [IPC_CHANNELS.requests.acceptAllAiAuditFindings, "audit-1"],
       [IPC_CHANNELS.requests.applyAiAudit, "audit-1"],
+      [IPC_CHANNELS.requests.listAiAgentRevisions, "session-1"],
+      [IPC_CHANNELS.requests.applyAiAgentRevisions, "session-1", ["rev-1"]],
+      [IPC_CHANNELS.requests.ignoreAiAgentRevision, "rev-1"],
       [IPC_CHANNELS.requests.confirmAppClose],
     ]);
   });

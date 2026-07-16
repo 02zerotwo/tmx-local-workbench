@@ -15,7 +15,9 @@ import { createAgentReplyGenerator } from "./ai/agent-generator";
 import { TranslationAgentService } from "./ai/translation-agent-service";
 import { createAuditAnalyzer } from "./ai/audit-analyzer";
 import { AuditWorkflowService } from "./ai/audit-workflow";
+import { AgentRevisionService } from "./ai/agent-revision-service";
 import { AiAgentRepository } from "./database/ai-agent-repository";
+import { AgentRevisionRepository } from "./database/ai-agent-revision-repository";
 import { AiAuditRepository } from "./database/ai-audit-repository";
 import { DatabaseBackupService } from "./database/backup-service";
 import { resolveDatabasePath } from "./database/connection";
@@ -77,13 +79,25 @@ function registerDataHandlers(databasePath: string): void {
       safeStorage,
     }),
   });
+  const agentRevisionRepository = new AgentRevisionRepository(
+    databaseService.database,
+  );
   const aiAgentService = new TranslationAgentService({
     repository: new AiAgentRepository(databaseService.database),
     generateReply: createAgentReplyGenerator({
       settings: aiSettingsService,
       projectRepository,
       unitRepository,
+      revisionRepository: agentRevisionRepository,
     }),
+    linkRevisions: (messageId, revisionIds) =>
+      agentRevisionRepository.linkRevisionsToMessage(revisionIds, messageId),
+  });
+  const agentRevisionService = new AgentRevisionService({
+    repository: agentRevisionRepository,
+    unitRepository,
+    transaction: (operation) =>
+      databaseService!.database.transaction(operation)(),
   });
   const aiAuditRepository = new AiAuditRepository(databaseService.database);
   aiAuditRepository.recoverInterruptedJobs();
@@ -106,6 +120,7 @@ function registerDataHandlers(databasePath: string): void {
     aiSettingsService,
     aiAgentService,
     aiAuditService,
+    aiRevisionService: agentRevisionService,
     exportProject: ({
       projectId,
       filters,

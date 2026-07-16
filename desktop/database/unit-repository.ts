@@ -517,6 +517,13 @@ export class UnitRepository {
     return this.updateTranslationTransaction(projectId, rowId, update);
   }
 
+  getUnitRow(projectId: string, rowId: string): TranslationUnitRow | null {
+    const row = this.getUnitStatement.get(projectId, rowId) as
+      | UnitDatabaseRow
+      | undefined;
+    return row ? mapUnitRow(row) : null;
+  }
+
   getTranslationHistory(
     projectId: string,
     rowId: string,

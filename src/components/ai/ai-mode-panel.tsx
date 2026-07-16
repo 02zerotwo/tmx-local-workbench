@@ -47,6 +47,9 @@ type AiSettingsApi = Pick<
   | "stopAiMessage"
   | "retryAiMessage"
   | "onAiAgentEvent"
+  | "listAiAgentRevisions"
+  | "applyAiAgentRevisions"
+  | "ignoreAiAgentRevision"
   | "listAiAuditJobs"
   | "startAiAudit"
   | "pauseAiAudit"
@@ -227,7 +230,7 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
           <TabsTrigger value="review"><CheckSquare />结果确认</TabsTrigger>
         </TabsList>
         <TabsContent className="min-h-0 flex-1 p-2 pt-0" value="conversation">
-          <AgentConversation api={api} projectId={projectId} />
+          <AgentConversation api={api} onApplied={onApplied} projectId={projectId} />
         </TabsContent>
         <TabsContent className="min-h-0 flex-1 p-0" value="audit">
           <AuditSetupPanel

@@ -31,6 +31,9 @@ describe("AiModePanel", () => {
       stopAiMessage: vi.fn(),
       retryAiMessage: vi.fn(),
       onAiAgentEvent: vi.fn().mockReturnValue(() => undefined),
+      listAiAgentRevisions: vi.fn().mockResolvedValue([]),
+      applyAiAgentRevisions: vi.fn().mockResolvedValue({ applied: 0, stale: 0, missing: 0 }),
+      ignoreAiAgentRevision: vi.fn(),
       listAiAuditJobs: vi.fn().mockResolvedValue([]),
       startAiAudit: vi.fn(),
       pauseAiAudit: vi.fn(),
@@ -54,6 +57,9 @@ describe("AiModePanel", () => {
       | "stopAiMessage"
       | "retryAiMessage"
       | "onAiAgentEvent"
+      | "listAiAgentRevisions"
+      | "applyAiAgentRevisions"
+      | "ignoreAiAgentRevision"
       | "listAiAuditJobs"
       | "startAiAudit"
       | "pauseAiAudit"
@@ -111,6 +117,9 @@ describe("AiModePanel", () => {
       stopAiMessage: vi.fn(),
       retryAiMessage: vi.fn(),
       onAiAgentEvent: vi.fn().mockReturnValue(() => undefined),
+      listAiAgentRevisions: vi.fn().mockResolvedValue([]),
+      applyAiAgentRevisions: vi.fn().mockResolvedValue({ applied: 0, stale: 0, missing: 0 }),
+      ignoreAiAgentRevision: vi.fn(),
       listAiAuditJobs: vi.fn().mockResolvedValue([]),
       startAiAudit: vi.fn(),
       pauseAiAudit: vi.fn(),
@@ -125,6 +134,7 @@ describe("AiModePanel", () => {
       | "deleteDeepSeekKey" | "queryProject" | "listAiSessions"
       | "createAiSession" | "listAiMessages" | "sendAiMessage"
       | "stopAiMessage" | "retryAiMessage" | "onAiAgentEvent"
+      | "listAiAgentRevisions" | "applyAiAgentRevisions" | "ignoreAiAgentRevision"
       | "listAiAuditJobs" | "startAiAudit" | "pauseAiAudit"
       | "resumeAiAudit" | "listAiAuditFindings" | "decideAiAuditFinding"
       | "acceptAllAiAuditFindings" | "applyAiAudit" | "onAiAuditEvent"

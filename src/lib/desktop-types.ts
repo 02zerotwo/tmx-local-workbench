@@ -122,13 +122,32 @@ export type AiSessionRecord = {
   updatedAt: string;
 };
 
+export type AiToolPartState =
+  | "input-available"
+  | "output-available"
+  | "output-error";
+
+/** 有序消息片段：文本、推理、工具调用（含入参/出参）。按数组顺序渲染。 */
+export type AiMessagePart =
+  | { type: "text"; text: string }
+  | { type: "reasoning"; text: string }
+  | {
+      type: "tool";
+      toolCallId: string;
+      toolName: string;
+      state: AiToolPartState;
+      input?: unknown;
+      output?: unknown;
+      errorText?: string;
+    };
+
 export type AiMessageRecord = {
   id: string;
   sessionId: string;
   parentMessageId: string | null;
   branchId: string;
   role: "user" | "assistant" | "tool" | "system";
-  parts: unknown[];
+  parts: AiMessagePart[];
   status: "streaming" | "complete" | "interrupted" | "error";
   inputTokens: number;
   outputTokens: number;
@@ -137,13 +156,46 @@ export type AiMessageRecord = {
   updatedAt: string;
 };
 
+export type AiAgentRevisionStatus = "pending" | "applied" | "ignored" | "stale";
+
+/** Agent 暂存的一条待审阅修改建议。 */
+export type AiAgentRevisionRecord = {
+  id: string;
+  sessionId: string;
+  messageId: string | null;
+  toolCallId: string;
+  projectId: string;
+  rowId: string;
+  sourceLang: string;
+  sourceText: string;
+  targetLang: string;
+  originalTargetText: string;
+  suggestedTargetText: string;
+  category: string;
+  reason: string;
+  confidence: number;
+  contentHash: string;
+  status: AiAgentRevisionStatus;
+  createdAt: string;
+  updatedAt: string;
+  appliedAt: string | null;
+};
+
 export type AiAgentEvent = {
   sessionId: string;
   event:
     | { type: "status"; status: "thinking" | "using-tool" | "complete" }
     | { type: "text-delta"; delta: string }
     | { type: "reasoning-delta"; delta: string }
-    | { type: "tool"; name: string; status: "running" | "complete" | "error" };
+    | {
+        type: "tool";
+        toolCallId: string;
+        name: string;
+        status: "running" | "complete" | "error";
+        input?: unknown;
+        output?: unknown;
+      }
+    | { type: "revision"; revision: AiAgentRevisionRecord };
 };
 
 export type AiAuditBoundaries = {
@@ -255,6 +307,12 @@ export type TmxDesktopApi = {
   ) => Promise<AiAuditFindingRecord>;
   acceptAllAiAuditFindings: (jobId: string) => Promise<number>;
   applyAiAudit: (jobId: string) => Promise<{ applied: number; stale: number }>;
+  listAiAgentRevisions: (sessionId: string) => Promise<AiAgentRevisionRecord[]>;
+  applyAiAgentRevisions: (
+    sessionId: string,
+    revisionIds: string[],
+  ) => Promise<{ applied: number; stale: number; missing: number }>;
+  ignoreAiAgentRevision: (revisionId: string) => Promise<AiAgentRevisionRecord>;
   confirmAppClose: () => Promise<void>;
   onImportProgress: (listener: (progress: ImportProgress) => void) => () => void;
   onExportProgress: (listener: (progress: ExportProgress) => void) => () => void;
