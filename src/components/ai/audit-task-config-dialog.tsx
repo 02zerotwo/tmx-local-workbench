@@ -39,7 +39,10 @@ type AuditTaskConfigDialogProps = {
   targetLanguages: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onStart: (filters: ProjectFilters, boundaries: AiAuditBoundaries) => Promise<void>;
+  onStart: (
+    filters: ProjectFilters,
+    boundaries: AiAuditBoundaries,
+  ) => Promise<void>;
 };
 
 function errorMessage(error: unknown): string {
@@ -72,14 +75,19 @@ export function AuditTaskConfigDialog({
   useEffect(() => {
     if (!open) return;
     let active = true;
-    api.getAiAuditDefaults().then((defaults) => {
-      if (!active) return;
-      setCustomRules(defaults.customRules);
-      setMinConfidence(String(defaults.minConfidence));
-      setAllowRewrite(defaults.allowRewrite);
-      setConcurrency(defaults.concurrency);
-    }).catch(() => undefined);
-    return () => { active = false; };
+    api
+      .getAiAuditDefaults()
+      .then((defaults) => {
+        if (!active) return;
+        setCustomRules(defaults.customRules);
+        setMinConfidence(String(defaults.minConfidence));
+        setAllowRewrite(defaults.allowRewrite);
+        setConcurrency(defaults.concurrency);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [api, open]);
 
   // 预估审查条数。
@@ -87,9 +95,11 @@ export function AuditTaskConfigDialog({
     if (!open) return;
     const requestId = ++countRequestIdRef.current;
     setCountLoading(true);
-    api.queryProject({ projectId, filters, page: 1, pageSize: 100 })
+    api
+      .queryProject({ projectId, filters, page: 1, pageSize: 100 })
       .then((result) => {
-        if (requestId === countRequestIdRef.current) setResultCount(result.total);
+        if (requestId === countRequestIdRef.current)
+          setResultCount(result.total);
       })
       .catch(() => {
         if (requestId === countRequestIdRef.current) setResultCount(0);
@@ -123,7 +133,7 @@ export function AuditTaskConfigDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[85vh] gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent className="h-[80vh] gap-0 overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="border-b border-border px-4 py-3">
           <DialogTitle className="text-sm">新建审查任务</DialogTitle>
           <DialogDescription className="text-xs">
@@ -145,7 +155,10 @@ export function AuditTaskConfigDialog({
                   className="pl-8"
                   onChange={(event) => setDraftQuery(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                    if (
+                      event.key === "Enter" &&
+                      !event.nativeEvent.isComposing
+                    ) {
                       event.preventDefault();
                       updateFilters({ query: draftQuery.trim() });
                     }
@@ -158,7 +171,9 @@ export function AuditTaskConfigDialog({
             <div className="grid grid-cols-2 gap-2">
               <Select
                 onValueChange={(value) =>
-                  updateFilters({ targetLanguage: value === "__all__" ? "" : value })
+                  updateFilters({
+                    targetLanguage: value === "__all__" ? "" : value,
+                  })
                 }
                 value={filters.targetLanguage || "__all__"}
               >
@@ -198,8 +213,13 @@ export function AuditTaskConfigDialog({
                 }
               />
               仅重复项
-              <span className="ml-auto tabular-nums text-muted-foreground" role="status">
-                {countLoading ? "统计中..." : `预计 ${resultCount.toLocaleString()} 条`}
+              <span
+                className="ml-auto tabular-nums text-muted-foreground"
+                role="status"
+              >
+                {countLoading
+                  ? "统计中..."
+                  : `预计 ${resultCount.toLocaleString()} 条`}
               </span>
             </label>
           </section>
@@ -242,7 +262,9 @@ export function AuditTaskConfigDialog({
             <label className="col-span-2 space-y-1.5 text-xs font-medium text-foreground">
               <span className="flex items-center justify-between">
                 并发审查数
-                <span className="tabular-nums text-muted-foreground">{concurrency}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {concurrency}
+                </span>
               </span>
               <input
                 aria-label="并发审查数"
@@ -266,7 +288,7 @@ export function AuditTaskConfigDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="border-t border-border px-4 py-3">
+        <DialogFooter className="w-full border-t border-border px-4 py-3">
           <Button
             disabled={busy}
             onClick={() => onOpenChange(false)}
@@ -282,12 +304,9 @@ export function AuditTaskConfigDialog({
             size="sm"
             type="button"
           >
-            {busy ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <ShieldCheck />
-            )}
-            开始审查 {resultCount > 0 ? `(${resultCount.toLocaleString()})` : ""}
+            {busy ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+            开始审查{" "}
+            {resultCount > 0 ? `(${resultCount.toLocaleString()})` : ""}
           </Button>
         </DialogFooter>
       </DialogContent>
