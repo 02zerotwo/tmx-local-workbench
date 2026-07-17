@@ -20,6 +20,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AgentConversation } from "./agent-conversation";
 import { AiCompactToolbar } from "./ai-compact-toolbar";
 import { AiKeySettingsDialog } from "./ai-key-settings-dialog";
@@ -72,6 +78,28 @@ type AiModePanelProps = {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "AI 操作失败，请重试";
+}
+
+function OpenEditorButton({ onOpenEditor }: { onOpenEditor: () => void }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            aria-label="编辑模式"
+            className="shrink-0"
+            onClick={onOpenEditor}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          >
+            <SquarePen />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">返回编辑模式</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 export function AiModePanel({
@@ -157,16 +185,7 @@ export function AiModePanel({
     return (
       <div className="flex h-full flex-col bg-background">
         <div className="flex h-10 shrink-0 items-center border-b border-border bg-card px-2">
-          <Button
-            aria-label="编辑模式"
-            onClick={onOpenEditor}
-            size="icon-sm"
-            title="编辑模式"
-            type="button"
-            variant="ghost"
-          >
-            <SquarePen />
-          </Button>
+          <OpenEditorButton onOpenEditor={onOpenEditor} />
         </div>
         <div className="flex min-h-0 flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="animate-spin" size={16} />
@@ -190,17 +209,7 @@ export function AiModePanel({
                 Key 使用系统加密服务保存在本机，不写入项目数据库或导出文件。
               </p>
             </div>
-            <Button
-              aria-label="编辑模式"
-              className="shrink-0"
-              onClick={onOpenEditor}
-              size="icon-sm"
-              title="编辑模式"
-              type="button"
-              variant="ghost"
-            >
-              <SquarePen />
-            </Button>
+            <OpenEditorButton onOpenEditor={onOpenEditor} />
           </div>
         </div>
         <div className="space-y-3 p-4">

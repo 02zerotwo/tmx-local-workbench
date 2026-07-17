@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Tabs } from "@/components/ui/tabs";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AiCompactToolbar } from "./ai-compact-toolbar";
 
 describe("AiCompactToolbar", () => {
-  it("keeps high-priority mode and new-session actions in one toolbar", () => {
+  it("keeps high-priority mode and new-session actions in one toolbar", async () => {
     const onTabChange = vi.fn();
     const onCreateSession = vi.fn();
     const onOpenHistory = vi.fn();
@@ -12,22 +13,28 @@ describe("AiCompactToolbar", () => {
     const onOpenSettings = vi.fn();
 
     render(
-      <Tabs onValueChange={onTabChange} value="conversation">
-        <AiCompactToolbar
-          activeTab="conversation"
-          onCreateSession={onCreateSession}
-          onOpenHistory={onOpenHistory}
-          onOpenEditor={onOpenEditor}
-          onOpenSettings={onOpenSettings}
-          sessionTitle="术语检查"
-        />
-      </Tabs>,
+      <TooltipProvider delayDuration={0}>
+        <Tabs onValueChange={onTabChange} value="conversation">
+          <AiCompactToolbar
+            activeTab="conversation"
+            onCreateSession={onCreateSession}
+            onOpenHistory={onOpenHistory}
+            onOpenEditor={onOpenEditor}
+            onOpenSettings={onOpenSettings}
+            sessionTitle="术语检查"
+          />
+        </Tabs>
+      </TooltipProvider>,
     );
 
     expect(screen.getByRole("toolbar", { name: "AI 工具栏" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "会话" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "审查" })).toBeVisible();
     expect(screen.getByText("术语检查")).toBeVisible();
+    fireEvent.pointerMove(screen.getByRole("button", { name: "编辑模式" }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "返回编辑模式",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "新建会话" }));
     fireEvent.click(screen.getByRole("button", { name: "历史会话" }));

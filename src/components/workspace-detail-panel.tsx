@@ -56,33 +56,37 @@ export function WorkspaceDetailPanel({
       className="flex h-full min-h-0 flex-col bg-background"
       data-testid="workspace-detail-panel"
     >
-      <div className="flex h-full min-h-0 flex-col">
+      <div
+        aria-label="编辑模式"
+        aria-hidden={mode !== "edit"}
+        className={
+          mode === "edit"
+            ? "flex h-full w-full min-h-0 flex-col"
+            : "hidden"
+        }
+        ref={editorPanelRef}
+        role="region"
+        tabIndex={-1}
+      >
+        {editor(controls)}
+      </div>
+
+      {aiMounted ? (
         <div
-          aria-label="编辑模式"
-          aria-hidden={mode !== "edit"}
-          className="min-h-0 flex flex-1 flex-col"
-          hidden={mode !== "edit"}
-          ref={editorPanelRef}
+          aria-label="AI 模式"
+          aria-hidden={mode !== "ai"}
+          className={
+            mode === "ai"
+              ? "flex h-full w-full min-h-0 flex-col"
+              : "hidden"
+          }
+          ref={aiPanelRef}
           role="region"
           tabIndex={-1}
         >
-          {editor(controls)}
+          {aiPanel(controls)}
         </div>
-
-        {aiMounted ? (
-          <div
-            aria-label="AI 模式"
-            aria-hidden={mode !== "ai"}
-            className="min-h-0 flex flex-1 flex-col"
-            hidden={mode !== "ai"}
-            ref={aiPanelRef}
-            role="region"
-            tabIndex={-1}
-          >
-            {aiPanel(controls)}
-          </div>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }

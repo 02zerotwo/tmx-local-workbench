@@ -18,6 +18,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type AiCompactToolbarProps = {
   activeTab: "conversation" | "audit";
@@ -44,16 +50,22 @@ export function AiCompactToolbar({
       className="ai-compact-toolbar flex h-10 shrink-0 items-center gap-1.5 border-b border-border bg-card px-2"
       role="toolbar"
     >
-      <Button
-        aria-label="编辑模式"
-        onClick={onOpenEditor}
-        size="icon-sm"
-        title="编辑模式"
-        type="button"
-        variant="ghost"
-      >
-        <SquarePen />
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              aria-label="编辑模式"
+              onClick={onOpenEditor}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <SquarePen />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">返回编辑模式</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <TabsList className="h-7 shrink-0 gap-0.5 rounded-md p-0.5">
         <TabsTrigger className="h-6 gap-1 px-2 text-xs" value="conversation">

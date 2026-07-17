@@ -17,6 +17,7 @@ import type {
   TranslationTextUpdate,
   TranslationUnitRow,
 } from "@/lib/desktop-types";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProjectWorkspace } from "./project-workspace";
 
 const PROJECT: ProjectDetail = {
@@ -230,7 +231,9 @@ describe("ProjectWorkspace filtering and pagination", () => {
       })),
     });
     const { container } = render(
-      <ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />,
+      <TooltipProvider delayDuration={0}>
+        <ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />
+      </TooltipProvider>,
     );
     await screen.findByRole("textbox", { name: "目标文本" });
 
@@ -241,14 +244,25 @@ describe("ProjectWorkspace filtering and pagination", () => {
     expect(
       screen.queryByRole("tablist", { name: "工作模式" }),
     ).not.toBeInTheDocument();
+    const editorMode = screen.getByRole("region", { name: "编辑模式" });
+    expect(editorMode).toHaveClass("flex", "h-full", "w-full");
+    expect(editorMode).not.toHaveClass("hidden");
 
     const sourceDraft = screen.getByRole("textbox", { name: "源文本" });
     fireEvent.change(sourceDraft, { target: { value: "切换前的编辑草稿" } });
 
     const openAi = screen.getByRole("button", { name: "AI 模式" });
     expect(openAi).toHaveAttribute("data-size", "icon-sm");
+    fireEvent.pointerMove(openAi);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "进入 AI 模式",
+    );
     fireEvent.click(openAi);
     expect(await screen.findByText("配置 DeepSeek API Key")).toBeVisible();
+    const aiMode = screen.getByRole("region", { name: "AI 模式" });
+    expect(editorMode).toHaveClass("hidden");
+    expect(aiMode).toHaveClass("flex", "h-full", "w-full");
+    expect(aiMode).not.toHaveClass("hidden");
     const keyDraft = screen.getByLabelText("DeepSeek API Key");
     fireEvent.change(keyDraft, { target: { value: "sk-unsaved-draft" } });
     await waitFor(() =>
@@ -257,7 +271,12 @@ describe("ProjectWorkspace filtering and pagination", () => {
       ).toHaveFocus(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "编辑模式" }));
+    const openEditor = screen.getByRole("button", { name: "编辑模式" });
+    fireEvent.pointerMove(openEditor);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "返回编辑模式",
+    );
+    fireEvent.click(openEditor);
     expect(
       await screen.findByRole("textbox", { name: "目标文本" }),
     ).toBeVisible();
@@ -266,6 +285,9 @@ describe("ProjectWorkspace filtering and pagination", () => {
         screen.getByRole("region", { name: "编辑模式" }),
       ).toHaveFocus(),
     );
+    expect(editorMode).toHaveClass("flex", "h-full", "w-full");
+    expect(editorMode).not.toHaveClass("hidden");
+    expect(aiMode).toHaveClass("hidden");
     expect(screen.getByRole("textbox", { name: "源文本" })).toHaveValue(
       "切换前的编辑草稿",
     );

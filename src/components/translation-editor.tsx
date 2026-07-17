@@ -552,16 +552,22 @@ export const TranslationEditor = forwardRef<
             </span>
           </div>
           {onOpenAiMode ? (
-            <Button
-              aria-label="AI 模式"
-              onClick={onOpenAiMode}
-              size="icon-sm"
-              title="AI 模式"
-              type="button"
-              variant="outline"
-            >
-              <Sparkles />
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label="AI 模式"
+                    onClick={onOpenAiMode}
+                    size="icon-sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <Sparkles />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">进入 AI 模式</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ) : null}
           <Button
             aria-label="修改记录"
