@@ -61,21 +61,27 @@ function createApi(overrides: Partial<AgentApi> = {}): AgentApi {
   return {
     listAiSessions: vi.fn().mockResolvedValue([session]),
     createAiSession: vi.fn().mockResolvedValue(session),
-    listAiMessages: vi.fn().mockResolvedValue([
-      message("message-1", "user", "检查这个项目的术语"),
-      message("message-2", "assistant", "发现 2 个术语不一致。"),
-    ]),
-    sendAiMessage: vi.fn().mockResolvedValue(
-      message("message-3", "assistant", "已完成当前范围检查。"),
-    ),
+    listAiMessages: vi
+      .fn()
+      .mockResolvedValue([
+        message("message-1", "user", "检查这个项目的术语"),
+        message("message-2", "assistant", "发现 2 个术语不一致。"),
+      ]),
+    sendAiMessage: vi
+      .fn()
+      .mockResolvedValue(
+        message("message-3", "assistant", "已完成当前范围检查。"),
+      ),
     stopAiMessage: vi.fn().mockResolvedValue(true),
-    retryAiMessage: vi.fn().mockResolvedValue(
-      message("message-retry", "assistant", "已重试"),
-    ),
+    retryAiMessage: vi
+      .fn()
+      .mockResolvedValue(message("message-retry", "assistant", "已重试")),
     onAiAgentEvent: vi.fn().mockReturnValue(() => undefined),
     listAiAgentRevisions: vi.fn().mockResolvedValue([]),
     updateAiAgentRevision: vi.fn(),
-    applyAiAgentRevisions: vi.fn().mockResolvedValue({ applied: 0, stale: 0, missing: 0 }),
+    applyAiAgentRevisions: vi
+      .fn()
+      .mockResolvedValue({ applied: 0, stale: 0, missing: 0 }),
     ignoreAiAgentRevision: vi.fn(),
     ...overrides,
   };
@@ -120,7 +126,8 @@ describe("AgentConversation", () => {
         });
         return message("message-3", "assistant", "已完成当前范围检查。");
       }),
-      listAiMessages: vi.fn()
+      listAiMessages: vi
+        .fn()
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([
           message("message-user", "user", "检查当前筛选结果"),
@@ -145,7 +152,6 @@ describe("AgentConversation", () => {
     });
     await waitFor(() => expect(api.listAiMessages).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("已完成当前范围检查。")).toBeVisible();
-    expect(await screen.findByText("检查点已保存")).toBeVisible();
   });
 
   it("edits a staged revision proposal before applying it", async () => {
@@ -205,7 +211,8 @@ describe("AgentConversation", () => {
     };
     const api = createApi({
       listAiMessages: vi.fn().mockResolvedValue([assistantWithProposal]),
-      listAiAgentRevisions: vi.fn()
+      listAiAgentRevisions: vi
+        .fn()
         .mockResolvedValueOnce([revision])
         .mockResolvedValue([updatedRevision]),
       updateAiAgentRevision: vi.fn().mockResolvedValue(updatedRevision),
@@ -232,7 +239,9 @@ describe("AgentConversation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "应用所选" }));
     await waitFor(() =>
-      expect(api.applyAiAgentRevisions).toHaveBeenCalledWith("session-1", ["rev-1"]),
+      expect(api.applyAiAgentRevisions).toHaveBeenCalledWith("session-1", [
+        "rev-1",
+      ]),
     );
   });
 });

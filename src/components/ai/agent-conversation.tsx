@@ -454,12 +454,12 @@ export function AgentConversation({
                 </MessageContent>
               </Message>
             ) : null}
-            {checkpointSaved ? (
+            {/* {checkpointSaved ? (
               <Checkpoint>
                 <CheckpointIcon />
                 <CheckpointTrigger disabled>检查点已保存</CheckpointTrigger>
               </Checkpoint>
-            ) : null}
+            ) : null} */}
           </ConversationContent>
           <ConversationScrollButton title="滚动到底部" />
         </Conversation>
