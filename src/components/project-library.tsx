@@ -282,7 +282,7 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
           <Languages className="mx-auto text-foreground" size={32} />
           <h1 className="mt-4 text-xl font-semibold">请使用桌面版打开</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            项目数据库和本地文件功能只在 TMX 本地翻译工作台桌面应用中提供。
+            项目数据库和本地文件功能只在 TMX Forge 桌面应用中提供。
           </p>
         </div>
       </main>
@@ -298,7 +298,7 @@ export function ProjectLibrary({ api, onOpenProject }: ProjectLibraryProps) {
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-base font-semibold text-foreground">
-              TMX 本地翻译工作台
+              TMX Forge
             </h1>
             <p className="truncate text-xs text-muted-foreground">项目库</p>
           </div>

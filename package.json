@@ -1,7 +1,7 @@
 {
-  "name": "tmx-local-workbench",
-  "productName": "TMX Local Workbench",
-  "version": "0.2.1",
+  "name": "tmx-forge",
+  "productName": "TMX Forge",
+  "version": "1.0.0",
   "private": true,
   "main": "dist-desktop/desktop/main.js",
   "scripts": {

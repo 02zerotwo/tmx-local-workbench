@@ -1,6 +1,6 @@
 # UI 设计规范 · 极简黑白（Monochrome）
 
-> TMX Local Workbench 前端设计系统。目标：克制、专业、高信息密度的生产力工具质感（参考 Linear / GitHub / VS Code）。
+> TMX Forge 前端设计系统。目标：克制、专业、高信息密度的生产力工具质感（参考 Linear / GitHub / VS Code）。
 > 本规范是**单一事实来源**——所有颜色、圆角、间距、字号、控件尺寸只能来自这里定义的令牌与组件变体。
 
 ## 0. 核心原则

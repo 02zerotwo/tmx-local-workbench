@@ -1,10 +1,10 @@
-# TMX 本地翻译工作台 Windows 版
+# TMX Forge Windows 版
 
 ## 打开方式
 
-1. 下载 `TMX-Local-Workbench-windows-x64` 构建产物。
+1. 下载 `TMX-Forge-win32-x64-1.0.0.zip` 构建产物。
 2. 完整解压 ZIP，不要只复制其中的 EXE 文件。
-3. 双击 `TMX-Workbench.exe`。
+3. 双击 `TMX-Forge.exe`。
 4. 首次打开后，点击“导入 TMX”创建项目。
 
 应用为便携版，不需要安装 Node.js、SQLite、Office 或其他运行环境。Excel 导出文件可使用 Microsoft Excel、WPS Office 或 LibreOffice 打开。
@@ -28,4 +28,4 @@
 
 ## 构建说明
 
-Windows x64 成品必须在 Windows 环境构建，因为项目使用了 SQLite 原生模块。仓库中的 `Build Windows portable ZIP` 工作流会运行测试、代码检查和打包，并上传 ZIP 构建产物。
+仓库中的 `Build Windows portable ZIP` 工作流会准备 Windows x64 版本的 SQLite 原生模块、运行代码检查和打包，并上传 ZIP 构建产物。

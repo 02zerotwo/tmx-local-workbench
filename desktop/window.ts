@@ -20,7 +20,8 @@ export async function createMainWindow(): Promise<BrowserWindow> {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: "#f6f8fb",
-    title: "TMX 本地翻译工作台",
+    icon: join(__dirname, "../../build/icon.png"),
+    title: "TMX Forge",
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       contextIsolation: true,

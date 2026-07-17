@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TMX Local Workbench",
+  title: "TMX Forge",
   description: "本地解析、筛选、编辑并导出 TMX 翻译文件",
 };
 

@@ -51,11 +51,13 @@ module.exports = {
     },
   },
   packagerConfig: {
+    appBundleId: "com.tmxforge.desktop",
     asar: {
       unpack: "**/*.node",
     },
     electronZipDir: process.env.ELECTRON_ZIP_DIR || undefined,
-    executableName: "TMX-Workbench",
+    executableName: "TMX-Forge",
+    icon: join(__dirname, "build", "icon"),
     ignore: [
       rootPath(".next"),
       rootPath(".pnpm-store"),
@@ -73,8 +75,16 @@ module.exports = {
       rootPath("tsconfig.tsbuildinfo"),
       rootPath("vitest.config.ts"),
     ],
-    name: "TMX-Local-Workbench",
+    name: "TMX-Forge",
+    osxSign: {
+      identity: "-",
+      identityValidation: false,
+    },
     overwrite: true,
+    win32metadata: {
+      FileDescription: "TMX Forge",
+      ProductName: "TMX Forge",
+    },
   },
   makers: [
     {
