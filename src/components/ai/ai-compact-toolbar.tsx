@@ -83,6 +83,7 @@ export function AiCompactToolbar({
             size="icon-sm"
             title="新建会话"
             type="button"
+            variant="ghost"
           >
             <MessageSquarePlus />
           </Button>
