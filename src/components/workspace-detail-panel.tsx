@@ -1,21 +1,24 @@
 "use client";
 
-import { Sparkles, SquarePen } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type WorkspaceMode = "edit" | "ai";
 
+type WorkspaceModeControls = {
+  openEditor: () => void;
+  openAi: () => void;
+};
+
 type WorkspaceDetailPanelProps = {
   /** 编辑面板内容（翻译编辑器或空状态）。始终保持挂载以保留未保存的草稿与保存回调。 */
-  editor: ReactNode;
+  editor: (controls: WorkspaceModeControls) => ReactNode;
   /** AI 助手面板内容。首次切换到 AI 模式后才会挂载，之后保持挂载以保留会话状态。 */
-  aiPanel: ReactNode;
+  aiPanel: (controls: WorkspaceModeControls) => ReactNode;
 };
 
 /**
- * 右侧详情面板：在同一侧边栏内通过顶部页签在“编辑面板”与“AI 助手”之间切换，
- * 取代原先点击按钮弹出抽屉的交互。
+ * 右侧详情面板统一管理“编辑面板”与“AI 助手”的挂载和可见状态。
+ * 模式入口由各面板放进自己的工具栏，避免额外占用一整行高度。
  */
 export function WorkspaceDetailPanel({
   editor,
@@ -23,54 +26,63 @@ export function WorkspaceDetailPanel({
 }: WorkspaceDetailPanelProps) {
   const [mode, setMode] = useState<WorkspaceMode>("edit");
   const [aiMounted, setAiMounted] = useState(false);
+  const editorPanelRef = useRef<HTMLDivElement>(null);
+  const aiPanelRef = useRef<HTMLDivElement>(null);
+  const focusAfterSwitchRef = useRef(false);
+  const controls: WorkspaceModeControls = {
+    openEditor: () => {
+      focusAfterSwitchRef.current = true;
+      setMode("edit");
+    },
+    openAi: () => {
+      focusAfterSwitchRef.current = true;
+      setAiMounted(true);
+      setMode("ai");
+    },
+  };
+
+  useEffect(() => {
+    if (!focusAfterSwitchRef.current) {
+      return;
+    }
+    focusAfterSwitchRef.current = false;
+    const activePanel =
+      mode === "edit" ? editorPanelRef.current : aiPanelRef.current;
+    activePanel?.focus({ preventScroll: true });
+  }, [mode]);
 
   return (
     <div
       className="flex h-full min-h-0 flex-col bg-background"
       data-testid="workspace-detail-panel"
     >
-      <Tabs
-        className="flex h-full min-h-0 flex-col gap-0"
-        onValueChange={(value) => {
-          const nextMode = value as WorkspaceMode;
-          setMode(nextMode);
-          if (nextMode === "ai") {
-            setAiMounted(true);
-          }
-        }}
-        value={mode}
-      >
-        <div className="flex h-11 shrink-0 items-center border-b border-border bg-card px-3">
-          <TabsList aria-label="工作模式" className="h-8">
-            <TabsTrigger value="edit">
-              <SquarePen />
-              编辑
-            </TabsTrigger>
-            <TabsTrigger value="ai">
-              <Sparkles />
-              AI 模式
-            </TabsTrigger>
-          </TabsList>
+      <div className="flex h-full min-h-0 flex-col">
+        <div
+          aria-label="编辑模式"
+          aria-hidden={mode !== "edit"}
+          className="min-h-0 flex flex-1 flex-col"
+          hidden={mode !== "edit"}
+          ref={editorPanelRef}
+          role="region"
+          tabIndex={-1}
+        >
+          {editor(controls)}
         </div>
 
-        <TabsContent
-          className="min-h-0 flex-1 flex-col data-[state=active]:flex data-[state=inactive]:hidden"
-          forceMount
-          value="edit"
-        >
-          {editor}
-        </TabsContent>
-
         {aiMounted ? (
-          <TabsContent
-            className="min-h-0 flex-1 flex-col data-[state=active]:flex data-[state=inactive]:hidden"
-            forceMount
-            value="ai"
+          <div
+            aria-label="AI 模式"
+            aria-hidden={mode !== "ai"}
+            className="min-h-0 flex flex-1 flex-col"
+            hidden={mode !== "ai"}
+            ref={aiPanelRef}
+            role="region"
+            tabIndex={-1}
           >
-            {aiPanel}
-          </TabsContent>
+            {aiPanel(controls)}
+          </div>
         ) : null}
-      </Tabs>
+      </div>
     </div>
   );
 }

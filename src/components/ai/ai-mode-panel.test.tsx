@@ -87,6 +87,7 @@ describe("AiModePanel", () => {
       <AiModePanel
         api={api}
         onApplied={() => undefined}
+        onOpenEditor={vi.fn()}
         projectId="project-1"
         targetLanguages={["en-US", "de-DE"]}
       />,
@@ -178,6 +179,7 @@ describe("AiModePanel", () => {
       <AiModePanel
         api={api}
         onApplied={() => undefined}
+        onOpenEditor={vi.fn()}
         projectId="project-1"
         targetLanguages={["en-US"]}
       />,

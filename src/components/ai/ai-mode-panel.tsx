@@ -4,6 +4,7 @@ import {
   KeyRound,
   Loader2,
   ShieldCheck,
+  SquarePen,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -66,13 +67,20 @@ type AiModePanelProps = {
   projectId: string;
   targetLanguages: string[];
   onApplied: () => void;
+  onOpenEditor: () => void;
 };
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "AI 操作失败，请重试";
 }
 
-export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiModePanelProps) {
+export function AiModePanel({
+  api,
+  projectId,
+  targetLanguages,
+  onApplied,
+  onOpenEditor,
+}: AiModePanelProps) {
   const [settings, setSettings] = useState<DeepSeekSettingsStatus | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(true);
@@ -147,9 +155,23 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="animate-spin" size={16} />
-        正在检查 AI 配置
+      <div className="flex h-full flex-col bg-background">
+        <div className="flex h-10 shrink-0 items-center border-b border-border bg-card px-2">
+          <Button
+            aria-label="编辑模式"
+            onClick={onOpenEditor}
+            size="icon-sm"
+            title="编辑模式"
+            type="button"
+            variant="ghost"
+          >
+            <SquarePen />
+          </Button>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="animate-spin" size={16} />
+          正在检查 AI 配置
+        </div>
       </div>
     );
   }
@@ -158,13 +180,28 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
     return (
       <div className="flex h-full flex-col bg-background">
         <div className="border-b border-border bg-card px-4 py-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <KeyRound size={16} />
-            配置 DeepSeek API Key
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <KeyRound size={16} />
+                配置 DeepSeek API Key
+              </div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Key 使用系统加密服务保存在本机，不写入项目数据库或导出文件。
+              </p>
+            </div>
+            <Button
+              aria-label="编辑模式"
+              className="shrink-0"
+              onClick={onOpenEditor}
+              size="icon-sm"
+              title="编辑模式"
+              type="button"
+              variant="ghost"
+            >
+              <SquarePen />
+            </Button>
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Key 使用系统加密服务保存在本机，不写入项目数据库或导出文件。
-          </p>
         </div>
         <div className="space-y-3 p-4">
           <label className="block text-xs font-medium text-foreground" htmlFor="deepseek-api-key">
@@ -220,6 +257,7 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
                 activeTab="conversation"
                 onCreateSession={onCreateSession}
                 onOpenHistory={onOpenHistory}
+                onOpenEditor={onOpenEditor}
                 onOpenSettings={() => setSettingsOpen(true)}
                 sessionTitle={sessionTitle}
               />
@@ -230,6 +268,7 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
           <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border bg-card">
             <AiCompactToolbar
               activeTab="audit"
+              onOpenEditor={onOpenEditor}
               onOpenSettings={() => setSettingsOpen(true)}
             />
             <div className="min-h-0 flex-1">

@@ -8,6 +8,7 @@ describe("AiCompactToolbar", () => {
     const onTabChange = vi.fn();
     const onCreateSession = vi.fn();
     const onOpenHistory = vi.fn();
+    const onOpenEditor = vi.fn();
     const onOpenSettings = vi.fn();
 
     render(
@@ -16,6 +17,7 @@ describe("AiCompactToolbar", () => {
           activeTab="conversation"
           onCreateSession={onCreateSession}
           onOpenHistory={onOpenHistory}
+          onOpenEditor={onOpenEditor}
           onOpenSettings={onOpenSettings}
           sessionTitle="术语检查"
         />
@@ -30,10 +32,12 @@ describe("AiCompactToolbar", () => {
     fireEvent.click(screen.getByRole("button", { name: "新建会话" }));
     fireEvent.click(screen.getByRole("button", { name: "历史会话" }));
     fireEvent.click(screen.getByRole("button", { name: "Key 设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "编辑模式" }));
 
     expect(onCreateSession).toHaveBeenCalledTimes(1);
     expect(onOpenHistory).toHaveBeenCalledTimes(1);
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(onOpenEditor).toHaveBeenCalledTimes(1);
     expect(screen.getAllByRole("button", { name: "更多工具" })).toHaveLength(2);
   });
 
@@ -42,6 +46,7 @@ describe("AiCompactToolbar", () => {
       <Tabs value="audit">
         <AiCompactToolbar
           activeTab="audit"
+          onOpenEditor={vi.fn()}
           onOpenSettings={vi.fn()}
         />
       </Tabs>,

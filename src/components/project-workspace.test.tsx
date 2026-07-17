@@ -220,8 +220,15 @@ describe("ProjectWorkspace filtering and pagination", () => {
     ).toBeInTheDocument();
   });
 
-  it("uses shadcn controls for language and the stable workspace mode switch", async () => {
-    const api = createApi();
+  it("switches modes from their existing toolbars without a standalone mode row", async () => {
+    const api = Object.assign(createApi(), {
+      getAiSettings: vi.fn(async () => ({
+        configured: false,
+        maskedKey: null,
+        model: "deepseek-v4-flash" as const,
+        verifiedAt: null,
+      })),
+    });
     const { container } = render(
       <ProjectWorkspace api={api} onBack={vi.fn()} project={PROJECT} />,
     );
@@ -231,17 +238,43 @@ describe("ProjectWorkspace filtering and pagination", () => {
       "data-slot",
       "select-trigger",
     );
-    const modeSwitch = screen.getByRole("tablist", { name: "工作模式" });
-    expect(modeSwitch).toHaveAttribute("data-slot", "tabs-list");
     expect(
-      within(modeSwitch).getByRole("tab", { name: "编辑" }),
-    ).toHaveAttribute("aria-selected", "true");
+      screen.queryByRole("tablist", { name: "工作模式" }),
+    ).not.toBeInTheDocument();
+
+    const sourceDraft = screen.getByRole("textbox", { name: "源文本" });
+    fireEvent.change(sourceDraft, { target: { value: "切换前的编辑草稿" } });
+
+    const openAi = screen.getByRole("button", { name: "AI 模式" });
+    expect(openAi).toHaveAttribute("data-size", "icon-sm");
+    fireEvent.click(openAi);
+    expect(await screen.findByText("配置 DeepSeek API Key")).toBeVisible();
+    const keyDraft = screen.getByLabelText("DeepSeek API Key");
+    fireEvent.change(keyDraft, { target: { value: "sk-unsaved-draft" } });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("region", { name: "AI 模式" }),
+      ).toHaveFocus(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "编辑模式" }));
     expect(
-      within(modeSwitch).getByRole("tab", { name: "编辑" }),
-    ).toHaveAttribute("data-slot", "tabs-trigger");
-    expect(
-      within(modeSwitch).getByRole("tab", { name: "AI 模式" }),
-    ).toHaveAttribute("aria-selected", "false");
+      await screen.findByRole("textbox", { name: "目标文本" }),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("region", { name: "编辑模式" }),
+      ).toHaveFocus(),
+    );
+    expect(screen.getByRole("textbox", { name: "源文本" })).toHaveValue(
+      "切换前的编辑草稿",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "AI 模式" }));
+    expect(await screen.findByLabelText("DeepSeek API Key")).toHaveValue(
+      "sk-unsaved-draft",
+    );
+
     expect(screen.getByRole("button", { name: "搜索" })).toHaveAttribute(
       "data-variant",
       "default",

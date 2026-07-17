@@ -10,6 +10,7 @@ import {
   Languages,
   Loader2,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -674,17 +675,18 @@ export function ProjectWorkspace({
 
           <ResizablePanel defaultSize="50" id="detail-workspace" minSize="35%">
             <WorkspaceDetailPanel
-              aiPanel={
+              aiPanel={({ openEditor }) => (
                 <AiModePanel
                   api={api}
                   onApplied={() =>
                     setDataRefreshNonce((current) => current + 1)
                   }
+                  onOpenEditor={openEditor}
                   projectId={project.id}
                   targetLanguages={project.targetLanguages}
                 />
-              }
-              editor={
+              )}
+              editor={({ openAi }) => (
                 <div className="min-h-0 flex-1 [&>aside]:h-full [&>aside]:border-l-0">
                   {selectedRow ? (
                     <TranslationEditor
@@ -697,6 +699,7 @@ export function ProjectWorkspace({
                       key={`${selectedRow.rowId}:${editorNonce}`}
                       onNext={() => navigateEditor("next")}
                       onCopyText={api.copyText}
+                      onOpenAiMode={openAi}
                       onPrevious={() => navigateEditor("previous")}
                       onRestoreHistory={restoreHistory}
                       onSave={saveTranslation}
@@ -705,12 +708,16 @@ export function ProjectWorkspace({
                       row={selectedRow}
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                      选择一条翻译开始编辑
+                    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
+                      <span>选择一条翻译开始编辑</span>
+                      <Button onClick={openAi} size="sm" type="button" variant="outline">
+                        <Sparkles />
+                        进入 AI 模式
+                      </Button>
                     </div>
                   )}
                 </div>
-              }
+              )}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

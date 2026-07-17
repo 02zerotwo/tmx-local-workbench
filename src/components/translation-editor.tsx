@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -62,6 +63,7 @@ type TranslationEditorProps = {
   canPrevious?: boolean;
   canNext?: boolean;
   editingLocked?: boolean;
+  onOpenAiMode?: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
   history?: TranslationHistoryEntry[];
@@ -96,6 +98,7 @@ export const TranslationEditor = forwardRef<
     canPrevious = false,
     canNext = false,
     editingLocked = false,
+    onOpenAiMode,
     onPrevious,
     onNext,
     history = [],
@@ -548,6 +551,18 @@ export const TranslationEditor = forwardRef<
               {formatSaveState(saveState, lastSavedAt)}
             </span>
           </div>
+          {onOpenAiMode ? (
+            <Button
+              aria-label="AI 模式"
+              onClick={onOpenAiMode}
+              size="icon-sm"
+              title="AI 模式"
+              type="button"
+              variant="outline"
+            >
+              <Sparkles />
+            </Button>
+          ) : null}
           <Button
             aria-label="修改记录"
             className="shrink-0"

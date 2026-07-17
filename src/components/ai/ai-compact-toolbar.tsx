@@ -7,6 +7,7 @@ import {
   MessageSquare,
   MessageSquarePlus,
   MoreHorizontal,
+  SquarePen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ type AiCompactToolbarProps = {
   sessionTitle?: string;
   onCreateSession?: () => void;
   onOpenHistory?: () => void;
+  onOpenEditor: () => void;
   onOpenSettings: () => void;
 };
 
@@ -31,6 +33,7 @@ export function AiCompactToolbar({
   sessionTitle,
   onCreateSession,
   onOpenHistory,
+  onOpenEditor,
   onOpenSettings,
 }: AiCompactToolbarProps) {
   const conversation = activeTab === "conversation";
@@ -41,6 +44,17 @@ export function AiCompactToolbar({
       className="ai-compact-toolbar flex h-10 shrink-0 items-center gap-1.5 border-b border-border bg-card px-2"
       role="toolbar"
     >
+      <Button
+        aria-label="编辑模式"
+        onClick={onOpenEditor}
+        size="icon-sm"
+        title="编辑模式"
+        type="button"
+        variant="ghost"
+      >
+        <SquarePen />
+      </Button>
+
       <TabsList className="h-7 shrink-0 gap-0.5 rounded-md p-0.5">
         <TabsTrigger className="h-6 gap-1 px-2 text-xs" value="conversation">
           <MessageSquare />
