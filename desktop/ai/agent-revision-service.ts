@@ -34,6 +34,26 @@ export class AgentRevisionService {
     return this.options.repository.listRevisions(sessionId);
   }
 
+  updateRevision(
+    revisionId: string,
+    suggestedTargetText: string,
+  ): AgentRevision {
+    if (!suggestedTargetText.trim()) {
+      throw new Error("建议译文不能为空");
+    }
+    const revision = this.options.repository.getRevision(revisionId);
+    if (!revision) {
+      throw new Error(`修改建议不存在: ${revisionId}`);
+    }
+    if (revision.status !== "pending") {
+      throw new Error("仅待审阅建议可以编辑");
+    }
+    return this.options.repository.updateSuggestedTargetText(
+      revisionId,
+      suggestedTargetText,
+    );
+  }
+
   ignoreRevision(revisionId: string): AgentRevision {
     return this.options.repository.setStatus(revisionId, "ignored");
   }

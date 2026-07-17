@@ -19,6 +19,7 @@ type AgentApi = Pick<
   | "retryAiMessage"
   | "onAiAgentEvent"
   | "listAiAgentRevisions"
+  | "updateAiAgentRevision"
   | "applyAiAgentRevisions"
   | "ignoreAiAgentRevision"
 >;
@@ -73,6 +74,7 @@ function createApi(overrides: Partial<AgentApi> = {}): AgentApi {
     ),
     onAiAgentEvent: vi.fn().mockReturnValue(() => undefined),
     listAiAgentRevisions: vi.fn().mockResolvedValue([]),
+    updateAiAgentRevision: vi.fn(),
     applyAiAgentRevisions: vi.fn().mockResolvedValue({ applied: 0, stale: 0, missing: 0 }),
     ignoreAiAgentRevision: vi.fn(),
     ...overrides,
@@ -146,7 +148,7 @@ describe("AgentConversation", () => {
     expect(await screen.findByText("检查点已保存")).toBeVisible();
   });
 
-  it("renders a staged revision proposal from an ordered tool part and applies it", async () => {
+  it("edits a staged revision proposal before applying it", async () => {
     const assistantWithProposal: AiMessageRecord = {
       id: "message-proposal",
       sessionId: session.id,
@@ -197,9 +199,16 @@ describe("AgentConversation", () => {
       updatedAt: "2026-07-15T06:00:00.000Z",
       appliedAt: null,
     };
+    const updatedRevision = {
+      ...revision,
+      suggestedTargetText: "Reset the alarm before continuing",
+    };
     const api = createApi({
       listAiMessages: vi.fn().mockResolvedValue([assistantWithProposal]),
-      listAiAgentRevisions: vi.fn().mockResolvedValue([revision]),
+      listAiAgentRevisions: vi.fn()
+        .mockResolvedValueOnce([revision])
+        .mockResolvedValue([updatedRevision]),
+      updateAiAgentRevision: vi.fn().mockResolvedValue(updatedRevision),
     });
 
     render(<AgentConversation api={api} projectId="project-1" />);
@@ -207,6 +216,19 @@ describe("AgentConversation", () => {
     expect(await screen.findByText(/待审阅修改建议/)).toBeVisible();
     // Each row is identified by its source text (no internal IDs); all selected by default.
     expect(await screen.findByText("报警复位步骤")).toBeVisible();
+
+    fireEvent.click(screen.getByText("报警复位步骤"));
+    fireEvent.click(screen.getByRole("button", { name: "编辑建议" }));
+    fireEvent.change(screen.getByLabelText("编辑建议译文：报警复位步骤"), {
+      target: { value: "Reset the alarm before continuing" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() =>
+      expect(api.updateAiAgentRevision).toHaveBeenCalledWith(
+        "rev-1",
+        "Reset the alarm before continuing",
+      ),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "应用所选" }));
     await waitFor(() =>

@@ -37,6 +37,7 @@ function createHarness(options: HarnessOptions = {}) {
   const queryProject = vi.fn();
   const updateTranslation = vi.fn();
   const getTranslationHistory = vi.fn(() => []);
+  const updateAiAgentRevision = vi.fn();
   const copyText = vi.fn();
   const openPath = vi.fn(async () => "");
   const showOpenDialog = vi.fn(async () => (
@@ -75,6 +76,13 @@ function createHarness(options: HarnessOptions = {}) {
     databasePath: "/tmp/tmx-workbench.db",
     projectRepository,
     unitRepository,
+    aiSettingsService: {} as never,
+    aiRevisionService: {
+      listRevisions: vi.fn(),
+      updateRevision: updateAiAgentRevision,
+      applyRevisions: vi.fn(),
+      ignoreRevision: vi.fn(),
+    } as never,
     exportProject,
     now: () => new Date("2026-07-14T09:30:00.000Z"),
     pathExists: options.pathExists ?? (() => false),
@@ -95,6 +103,7 @@ function createHarness(options: HarnessOptions = {}) {
     queryProject,
     updateTranslation,
     getTranslationHistory,
+    updateAiAgentRevision,
     copyText,
     openPath,
     showOpenDialog,
@@ -161,6 +170,21 @@ describe("registerDesktopHandlers", () => {
     expect(copyText).toHaveBeenCalledWith("Copied text");
     expect(() => handler(event, { text: "bad" })).toThrow(/复制文本/);
     expect(copyText).toHaveBeenCalledTimes(1);
+  });
+
+  it("validates and updates an AI Agent revision suggestion", () => {
+    const { event, handlers, updateAiAgentRevision } = createHarness();
+    const handler = handlers.get(IPC_CHANNELS.requests.updateAiAgentRevision)!;
+
+    handler(event, "rev-1", "Edited suggestion");
+
+    expect(updateAiAgentRevision)
+      .toHaveBeenCalledWith("rev-1", "Edited suggestion");
+    expect(() => handler(event, "", "Edited suggestion"))
+      .toThrow(/修改建议 ID/);
+    expect(() => handler(event, "rev-1", 123))
+      .toThrow(/建议译文/);
+    expect(updateAiAgentRevision).toHaveBeenCalledTimes(1);
   });
 
   it("rejects clipboard writes from an untrusted renderer", () => {

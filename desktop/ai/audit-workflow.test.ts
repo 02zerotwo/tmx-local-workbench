@@ -79,6 +79,10 @@ describe("AuditWorkflowService", () => {
       pageSize: 100,
     }).rows[0].targetText).toBe("Start the device");
     expect(repository.getJob(job.id)?.status).toBe("applied");
+    expect(() => workflow.setFindingDecision(finding.id, "rejected"))
+      .toThrow("已应用的审查任务不可再编辑");
+    expect(() => workflow.acceptAllPendingFindings(job.id))
+      .toThrow("已应用的审查任务不可再编辑");
   });
 
   it("reports running again when a paused in-flight item is resumed", async () => {

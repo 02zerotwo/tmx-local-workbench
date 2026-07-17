@@ -146,5 +146,37 @@ describe("AuditPanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: /应用 1 条/ }));
     fireEvent.click(await screen.findByRole("button", { name: "确认写入" }));
     await waitFor(() => expect(api.applyAiAudit).toHaveBeenCalledWith("job-1"));
+    expect(await screen.findByText("该审查任务已应用，当前为只读状态。"))
+      .toBeVisible();
+    expect(screen.getByRole("button", { name: "接受建议" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "编辑" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "拒绝建议" })).toBeDisabled();
+  });
+
+  it("opens an applied audit job in read-only mode", async () => {
+    const api = createApi({
+      listAiAuditJobs: vi.fn().mockResolvedValue([job({ status: "applied" })]),
+      listAiAuditFindings: vi.fn().mockResolvedValue([
+        finding({ decision: "accepted" }),
+      ]),
+    });
+    render(
+      <AuditPanel
+        api={api}
+        onApplied={vi.fn()}
+        projectId="project-1"
+        targetLanguages={["en-US"]}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /进入审阅/ }));
+
+    expect(await screen.findByText("该审查任务已应用，当前为只读状态。"))
+      .toBeVisible();
+    expect(screen.getByRole("button", { name: "全部接受" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "接受建议" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "编辑" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "拒绝建议" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /应用 1 条/ })).toBeDisabled();
   });
 });

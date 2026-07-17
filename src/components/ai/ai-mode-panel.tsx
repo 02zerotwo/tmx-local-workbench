@@ -47,6 +47,7 @@ type AiSettingsApi = Pick<
   | "retryAiMessage"
   | "onAiAgentEvent"
   | "listAiAgentRevisions"
+  | "updateAiAgentRevision"
   | "applyAiAgentRevisions"
   | "ignoreAiAgentRevision"
   | "listAiAuditJobs"

@@ -107,6 +107,9 @@ export class AuditWorkflowService {
     decision: AuditFinding["decision"],
     editedTargetText?: string | null,
   ): AuditFinding {
+    const finding = this.options.repository.getFinding(findingId);
+    if (!finding) throw new Error("审查建议不存在");
+    this.requireEditableJob(finding.jobId);
     return this.options.repository.setFindingDecision(
       findingId,
       decision,
@@ -115,7 +118,17 @@ export class AuditWorkflowService {
   }
 
   acceptAllPendingFindings(jobId: string): number {
+    this.requireEditableJob(jobId);
     return this.options.repository.acceptAllPendingFindings(jobId);
+  }
+
+  private requireEditableJob(jobId: string): AuditJob {
+    const job = this.options.repository.getJob(jobId);
+    if (!job) throw new Error("审查任务不存在");
+    if (job.status === "applied") {
+      throw new Error("已应用的审查任务不可再编辑");
+    }
+    return job;
   }
 
   async runJob(

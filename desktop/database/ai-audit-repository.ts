@@ -470,6 +470,17 @@ export class AiAuditRepository {
     return rows.map(mapFinding);
   }
 
+  getFinding(findingId: string): AuditFinding | null {
+    const row = this.db.prepare(`
+      SELECT f.*, u.source_lang, u.source_text, u.target_lang, u.target_text
+      FROM ai_audit_findings f
+      JOIN translation_units u
+        ON u.project_id = f.project_id AND u.row_id = f.row_id
+      WHERE f.id = ?
+    `).get(findingId) as FindingRow | undefined;
+    return row ? mapFinding(row) : null;
+  }
+
   setFindingDecision(
     findingId: string,
     decision: AuditFindingDecision,
@@ -481,15 +492,9 @@ export class AiAuditRepository {
       SET decision = ?, edited_target_text = ?, updated_at = ?
       WHERE id = ?
     `).run(decision, editedTargetText ?? null, now, findingId);
-    const row = this.db.prepare(`
-      SELECT f.*, u.source_lang, u.source_text, u.target_lang, u.target_text
-      FROM ai_audit_findings f
-      JOIN translation_units u
-        ON u.project_id = f.project_id AND u.row_id = f.row_id
-      WHERE f.id = ?
-    `).get(findingId) as FindingRow | undefined;
-    if (!row) throw new Error("审查建议不存在");
-    return mapFinding(row);
+    const finding = this.getFinding(findingId);
+    if (!finding) throw new Error("审查建议不存在");
+    return finding;
   }
 
   acceptAllPendingFindings(jobId: string): number {

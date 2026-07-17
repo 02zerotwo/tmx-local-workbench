@@ -45,6 +45,7 @@ const METHOD_NAMES = [
   "getAiAuditDefaults",
   "saveAiAuditDefaults",
   "listAiAgentRevisions",
+  "updateAiAgentRevision",
   "applyAiAgentRevisions",
   "ignoreAiAgentRevision",
   "confirmAppClose",
@@ -126,6 +127,7 @@ describe("desktop IPC contract", () => {
       concurrency: 8,
     });
     await api.listAiAgentRevisions("session-1");
+    await api.updateAiAgentRevision("rev-1", "Edited suggestion");
     await api.applyAiAgentRevisions("session-1", ["rev-1"]);
     await api.ignoreAiAgentRevision("rev-1");
     await api.confirmAppClose();
@@ -179,6 +181,7 @@ describe("desktop IPC contract", () => {
         concurrency: 8,
       }],
       [IPC_CHANNELS.requests.listAiAgentRevisions, "session-1"],
+      [IPC_CHANNELS.requests.updateAiAgentRevision, "rev-1", "Edited suggestion"],
       [IPC_CHANNELS.requests.applyAiAgentRevisions, "session-1", ["rev-1"]],
       [IPC_CHANNELS.requests.ignoreAiAgentRevision, "rev-1"],
       [IPC_CHANNELS.requests.confirmAppClose],

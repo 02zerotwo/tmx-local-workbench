@@ -87,7 +87,7 @@ export type DesktopHandlerDependencies = {
   >;
   aiRevisionService?: Pick<
     AgentRevisionService,
-    "listRevisions" | "applyRevisions" | "ignoreRevision"
+    "listRevisions" | "updateRevision" | "applyRevisions" | "ignoreRevision"
   >;
   exportProject?: ExportProjectOperation;
   backupDatabase?: (suggestedFilePath: string) => Promise<string>;
@@ -544,6 +544,17 @@ export function registerDesktopHandlers(
     requireTrustedRevisionSender(dependencies, event);
     return dependencies.aiRevisionService!.listRevisions(
       requiredString(sessionId, "会话 ID"),
+    );
+  });
+  register(dependencies, requests.updateAiAgentRevision, (
+    event,
+    revisionId,
+    suggestedTargetText,
+  ) => {
+    requireTrustedRevisionSender(dependencies, event);
+    return dependencies.aiRevisionService!.updateRevision(
+      requiredString(revisionId, "修改建议 ID"),
+      requiredString(suggestedTargetText, "建议译文", true),
     );
   });
   register(dependencies, requests.applyAiAgentRevisions, (event, sessionId, revisionIds) => {

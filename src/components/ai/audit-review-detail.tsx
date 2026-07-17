@@ -61,8 +61,10 @@ export function AuditReviewDetail({
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [applied, setApplied] = useState(job.status === "applied");
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const readOnly = applied || job.status === "applied";
 
   const loadFindings = useCallback(async () => {
     const next = await api.listAiAuditFindings(job.id);
@@ -90,6 +92,7 @@ export function AuditReviewDetail({
     decision: AiAuditFindingRecord["decision"],
     editedTargetText?: string,
   ) => {
+    if (readOnly) return;
     setBusy(true);
     setError("");
     try {
@@ -107,6 +110,7 @@ export function AuditReviewDetail({
   };
 
   const acceptAll = async () => {
+    if (readOnly) return;
     setBusy(true);
     setError("");
     try {
@@ -120,6 +124,7 @@ export function AuditReviewDetail({
   };
 
   const apply = async () => {
+    if (readOnly) return;
     setBusy(true);
     setError("");
     try {
@@ -128,6 +133,8 @@ export function AuditReviewDetail({
         `已写入 ${result.applied} 条${result.stale ? `，跳过 ${result.stale} 条已变化内容` : ""}`,
       );
       setConfirming(false);
+      setApplied(true);
+      setEditing(new Set());
       onApplied();
       await loadFindings();
     } catch (applyError) {
@@ -165,7 +172,7 @@ export function AuditReviewDetail({
         </span>
         <Button
           className="ml-auto"
-          disabled={busy}
+          disabled={busy || readOnly}
           onClick={() => void acceptAll()}
           type="button"
           variant="ghost"
@@ -174,7 +181,7 @@ export function AuditReviewDetail({
           全部接受
         </Button>
         <Button
-          disabled={busy || acceptedCount === 0 || job.status === "applied"}
+          disabled={busy || acceptedCount === 0 || readOnly}
           onClick={() => setConfirming(true)}
           type="button"
         >
@@ -182,6 +189,11 @@ export function AuditReviewDetail({
         </Button>
       </div>
 
+      {readOnly ? (
+        <div className="border-b border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+          该审查任务已应用，当前为只读状态。
+        </div>
+      ) : null}
       {success ? (
         <div className="border-b border-border bg-muted px-3 py-2 text-xs text-foreground">
           {success}
@@ -248,7 +260,7 @@ export function AuditReviewDetail({
                       </p>
                     </>
                   )}
-                  {isEditing && hasSuggestion ? (
+                  {isEditing && hasSuggestion && !readOnly ? (
                     <Textarea
                       aria-label="编辑建议译文"
                       className="min-h-16 text-xs leading-5 text-foreground"
@@ -263,7 +275,7 @@ export function AuditReviewDetail({
                 <div className="mt-2 flex items-center gap-1">
                   <Button
                     aria-label="接受建议"
-                    disabled={busy || !hasSuggestion}
+                    disabled={busy || readOnly || !hasSuggestion}
                     onClick={() => void decide(finding, "accepted")}
                     size="sm"
                     type="button"
@@ -273,7 +285,7 @@ export function AuditReviewDetail({
                     接受
                   </Button>
                   <Button
-                    disabled={busy || !hasSuggestion}
+                    disabled={busy || readOnly || !hasSuggestion}
                     onClick={() => {
                       if (isEditing) void decide(finding, "edited", draft);
                       else toggleEditing(finding.id);
@@ -287,7 +299,7 @@ export function AuditReviewDetail({
                   </Button>
                   <Button
                     aria-label="拒绝建议"
-                    disabled={busy}
+                    disabled={busy || readOnly}
                     onClick={() => void decide(finding, "rejected")}
                     size="sm"
                     type="button"

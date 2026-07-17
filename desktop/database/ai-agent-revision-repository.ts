@@ -142,6 +142,23 @@ export class AgentRevisionRepository {
     return revision;
   }
 
+  updateSuggestedTargetText(
+    id: string,
+    suggestedTargetText: string,
+  ): AgentRevision {
+    const timestamp = this.now().toISOString();
+    this.db.prepare(`
+      UPDATE ai_agent_revisions
+      SET suggested_target_text = ?, updated_at = ?
+      WHERE id = ?
+    `).run(suggestedTargetText, timestamp, id);
+    const revision = this.getRevision(id);
+    if (!revision) {
+      throw new Error(`修改建议不存在: ${id}`);
+    }
+    return revision;
+  }
+
   linkRevisionsToMessage(ids: string[], messageId: string): void {
     if (ids.length === 0) {
       return;

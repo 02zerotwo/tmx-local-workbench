@@ -87,6 +87,61 @@ function stage(
 }
 
 describe("AgentRevisionService", () => {
+  it("updates the suggested text of a pending revision", () => {
+    const { project, unitRepository, session, revisionRepository, service } = setup();
+    const current = unitRepository.getUnitRow(project.id, "row-1")!;
+    const revision = stage(
+      revisionRepository,
+      session.id,
+      project.id,
+      current,
+      "Reset the alarm now",
+    );
+
+    const updated = service.updateRevision(
+      revision.id,
+      "Reset the alarm before continuing",
+    );
+
+    expect(updated.suggestedTargetText).toBe(
+      "Reset the alarm before continuing",
+    );
+    expect(service.listRevisions(session.id)[0]?.suggestedTargetText).toBe(
+      "Reset the alarm before continuing",
+    );
+  });
+
+  it("rejects a blank suggested translation", () => {
+    const { project, unitRepository, session, revisionRepository, service } = setup();
+    const current = unitRepository.getUnitRow(project.id, "row-1")!;
+    const revision = stage(
+      revisionRepository,
+      session.id,
+      project.id,
+      current,
+      "Reset the alarm now",
+    );
+
+    expect(() => service.updateRevision(revision.id, "   "))
+      .toThrow("建议译文不能为空");
+  });
+
+  it("rejects editing a revision that is no longer pending", () => {
+    const { project, unitRepository, session, revisionRepository, service } = setup();
+    const current = unitRepository.getUnitRow(project.id, "row-1")!;
+    const revision = stage(
+      revisionRepository,
+      session.id,
+      project.id,
+      current,
+      "Reset the alarm now",
+    );
+    revisionRepository.setStatus(revision.id, "applied");
+
+    expect(() => service.updateRevision(revision.id, "Changed after apply"))
+      .toThrow("仅待审阅建议可以编辑");
+  });
+
   it("applies a pending revision and writes the suggested target text", () => {
     const { project, unitRepository, session, revisionRepository, service } = setup();
     const current = unitRepository.getUnitRow(project.id, "row-1")!;

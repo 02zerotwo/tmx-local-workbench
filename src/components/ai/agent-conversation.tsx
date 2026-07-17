@@ -52,6 +52,7 @@ type AgentApi = Pick<
   | "retryAiMessage"
   | "onAiAgentEvent"
   | "listAiAgentRevisions"
+  | "updateAiAgentRevision"
   | "applyAiAgentRevisions"
   | "ignoreAiAgentRevision"
 >;
@@ -347,6 +348,26 @@ export function AgentConversation({
     }
   };
 
+  const updateRevision = async (
+    revisionId: string,
+    suggestedTargetText: string,
+  ): Promise<boolean> => {
+    const sessionId = activeSessionIdRef.current;
+    if (!sessionId) return false;
+    setRevisionBusy(true);
+    setError("");
+    try {
+      await api.updateAiAgentRevision(revisionId, suggestedTargetText);
+      await loadRevisions(sessionId);
+      return true;
+    } catch (updateError) {
+      setError(getErrorMessage(updateError));
+      return false;
+    } finally {
+      setRevisionBusy(false);
+    }
+  };
+
   const ignoreRevisions = async (ids: string[]) => {
     const sessionId = activeSessionIdRef.current;
     if (!sessionId || ids.length === 0) return;
@@ -466,6 +487,7 @@ export function AgentConversation({
             busy={revisionBusy}
             onApply={(ids) => void applyRevisions(ids)}
             onIgnore={(ids) => void ignoreRevisions(ids)}
+            onUpdate={updateRevision}
             revisions={pendingRevisions}
           />
         ) : null}

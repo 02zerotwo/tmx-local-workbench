@@ -173,6 +173,11 @@ export function createDesktopApi(ipcRenderer: IpcRendererBridge): TmxDesktopApi 
       IPC_CHANNELS.requests.listAiAgentRevisions,
       sessionId,
     ) as ReturnType<TmxDesktopApi["listAiAgentRevisions"]>,
+    updateAiAgentRevision: (revisionId, suggestedTargetText) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.updateAiAgentRevision,
+      revisionId,
+      suggestedTargetText,
+    ) as ReturnType<TmxDesktopApi["updateAiAgentRevision"]>,
     applyAiAgentRevisions: (sessionId, revisionIds) => ipcRenderer.invoke(
       IPC_CHANNELS.requests.applyAiAgentRevisions,
       sessionId,

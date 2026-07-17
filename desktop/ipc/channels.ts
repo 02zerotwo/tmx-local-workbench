@@ -45,6 +45,7 @@ export const IPC_CHANNELS = {
     getAiAuditDefaults: "tmx-workbench:ai:audits:defaults:get",
     saveAiAuditDefaults: "tmx-workbench:ai:audits:defaults:save",
     listAiAgentRevisions: "tmx-workbench:ai:revisions:list",
+    updateAiAgentRevision: "tmx-workbench:ai:revisions:update",
     applyAiAgentRevisions: "tmx-workbench:ai:revisions:apply",
     ignoreAiAgentRevision: "tmx-workbench:ai:revisions:ignore",
     confirmAppClose: "tmx-workbench:application:confirm-close",

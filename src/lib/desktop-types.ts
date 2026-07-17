@@ -316,6 +316,10 @@ export type TmxDesktopApi = {
   getAiAuditDefaults: () => Promise<AiAuditDefaults>;
   saveAiAuditDefaults: (defaults: AiAuditDefaults) => Promise<AiAuditDefaults>;
   listAiAgentRevisions: (sessionId: string) => Promise<AiAgentRevisionRecord[]>;
+  updateAiAgentRevision: (
+    revisionId: string,
+    suggestedTargetText: string,
+  ) => Promise<AiAgentRevisionRecord>;
   applyAiAgentRevisions: (
     sessionId: string,
     revisionIds: string[],
