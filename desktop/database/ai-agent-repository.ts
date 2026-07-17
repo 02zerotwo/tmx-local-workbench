@@ -127,6 +127,33 @@ export class AiAgentRepository {
     `).all(projectId) as SessionRow[]).map(mapSession);
   }
 
+  renameSession(sessionId: string, title: string): AiSession {
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) {
+      throw new Error("会话标题不能为空");
+    }
+    const timestamp = this.now().toISOString();
+    const result = this.db.prepare(`
+      UPDATE ai_agent_sessions
+      SET title = ?, updated_at = ?
+      WHERE id = ?
+    `).run(normalizedTitle, timestamp, sessionId);
+    if (result.changes !== 1) {
+      throw new Error("AI 会话不存在");
+    }
+    return this.getSession(sessionId)!;
+  }
+
+  deleteSession(sessionId: string): true {
+    const result = this.db.prepare(`
+      DELETE FROM ai_agent_sessions WHERE id = ?
+    `).run(sessionId);
+    if (result.changes !== 1) {
+      throw new Error("AI 会话不存在");
+    }
+    return true;
+  }
+
   appendMessage(input: {
     sessionId: string;
     parentMessageId?: string | null;

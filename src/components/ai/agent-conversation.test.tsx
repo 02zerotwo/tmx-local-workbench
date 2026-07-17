@@ -8,11 +8,14 @@ import type {
   TmxDesktopApi,
 } from "@/lib/desktop-types";
 import { AgentConversation } from "./agent-conversation";
+import type { AgentConversationToolbarControls } from "./agent-conversation";
 
 type AgentApi = Pick<
   TmxDesktopApi,
   | "listAiSessions"
   | "createAiSession"
+  | "renameAiSession"
+  | "deleteAiSession"
   | "listAiMessages"
   | "sendAiMessage"
   | "stopAiMessage"
@@ -34,6 +37,14 @@ const session: AiSessionRecord = {
   model: "deepseek-v4-flash",
   createdAt: "2026-07-15T06:00:00.000Z",
   updatedAt: "2026-07-15T06:10:00.000Z",
+};
+
+const secondSession: AiSessionRecord = {
+  ...session,
+  id: "session-2",
+  title: "格式复查",
+  createdAt: "2026-07-15T05:00:00.000Z",
+  updatedAt: "2026-07-15T05:10:00.000Z",
 };
 
 function message(
@@ -61,6 +72,11 @@ function createApi(overrides: Partial<AgentApi> = {}): AgentApi {
   return {
     listAiSessions: vi.fn().mockResolvedValue([session]),
     createAiSession: vi.fn().mockResolvedValue(session),
+    renameAiSession: vi.fn().mockImplementation(async (_sessionId, title) => ({
+      ...session,
+      title,
+    })),
+    deleteAiSession: vi.fn().mockResolvedValue(true),
     listAiMessages: vi
       .fn()
       .mockResolvedValue([
@@ -87,16 +103,153 @@ function createApi(overrides: Partial<AgentApi> = {}): AgentApi {
   };
 }
 
+function testToolbar({
+  sessionTitle,
+  onCreateSession,
+  onOpenHistory,
+}: AgentConversationToolbarControls) {
+  return (
+    <div data-testid="conversation-toolbar">
+      <span>{sessionTitle}</span>
+      <button aria-label="打开历史" onClick={onOpenHistory} type="button" />
+      <button aria-label="创建新会话" onClick={onCreateSession} type="button" />
+    </div>
+  );
+}
+
 describe("AgentConversation", () => {
   it("restores project sessions and persisted messages", async () => {
     const api = createApi();
 
-    render(<AgentConversation api={api} projectId="project-1" />);
+    render(
+      <AgentConversation
+        api={api}
+        projectId="project-1"
+        renderToolbar={testToolbar}
+      />,
+    );
 
     expect(await screen.findByText("术语检查")).toBeVisible();
     expect(await screen.findByText("检查这个项目的术语")).toBeVisible();
     expect(screen.getByText("发现 2 个术语不一致。")).toBeVisible();
     expect(api.listAiMessages).toHaveBeenCalledWith("session-1", "main");
+    expect(screen.getByTestId("conversation-toolbar")).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "打开历史" })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "创建新会话" }));
+    expect(api.createAiSession).not.toHaveBeenCalled();
+    expect(screen.getByTestId("conversation-toolbar")).toHaveTextContent("新会话");
+    fireEvent.click(screen.getByRole("button", { name: "打开历史" }));
+    expect(await screen.findByRole("dialog")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "关闭历史会话" }));
+  });
+
+  it("creates a blank session on first send using a truncated message title", async () => {
+    const content = `${"检查这份译文".repeat(6)}  额外内容`;
+    const title = `${Array.from(content.trim().replace(/\s+/gu, " "))
+      .slice(0, 30)
+      .join("")}…`;
+    const createdSession = {
+      ...session,
+      id: "session-new",
+      title,
+    };
+    const api = createApi({
+      createAiSession: vi.fn().mockResolvedValue(createdSession),
+      listAiMessages: vi.fn().mockResolvedValue([]),
+      listAiSessions: vi
+        .fn()
+        .mockResolvedValueOnce([session])
+        .mockResolvedValue([createdSession, session]),
+    });
+
+    render(
+      <AgentConversation
+        api={api}
+        projectId="project-1"
+        renderToolbar={testToolbar}
+      />,
+    );
+
+    expect(await screen.findByText("术语检查")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "创建新会话" }));
+    expect(api.createAiSession).not.toHaveBeenCalled();
+
+    const input = screen.getByPlaceholderText(
+      "向 DeepSeek 询问，或让它审查并修改当前项目...",
+    );
+    fireEvent.change(input, { target: { value: content } });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+
+    await waitFor(() => {
+      expect(api.createAiSession).toHaveBeenCalledWith("project-1", title);
+    });
+    expect(api.sendAiMessage).toHaveBeenCalledWith(
+      "session-new",
+      "main",
+      content.trim(),
+    );
+  });
+
+  it("renames the active session and updates the toolbar title", async () => {
+    const api = createApi();
+
+    render(
+      <AgentConversation
+        api={api}
+        projectId="project-1"
+        renderToolbar={testToolbar}
+      />,
+    );
+
+    expect(await screen.findByText("术语检查")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "打开历史" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多：术语检查" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "重命名" }));
+    fireEvent.change(screen.getByLabelText("会话名称"), {
+      target: { value: "项目术语复查" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存名称" }));
+
+    await waitFor(() => {
+      expect(api.renameAiSession).toHaveBeenCalledWith(
+        "session-1",
+        "项目术语复查",
+      );
+    });
+    expect(screen.getByTestId("conversation-toolbar")).toHaveTextContent(
+      "项目术语复查",
+    );
+  });
+
+  it("deletes the active session and selects the newest remaining session", async () => {
+    const api = createApi({
+      listAiSessions: vi.fn().mockResolvedValue([session, secondSession]),
+      listAiMessages: vi.fn().mockResolvedValue([]),
+    });
+
+    render(
+      <AgentConversation
+        api={api}
+        projectId="project-1"
+        renderToolbar={testToolbar}
+      />,
+    );
+
+    expect(await screen.findByText("术语检查")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "打开历史" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多：术语检查" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "删除" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
+
+    await waitFor(() => {
+      expect(api.deleteAiSession).toHaveBeenCalledWith("session-1");
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("conversation-toolbar")).toHaveTextContent(
+        "格式复查",
+      );
+    });
+    expect(api.listAiMessages).toHaveBeenCalledWith("session-2", "main");
   });
 
   it("streams the active reply and reloads its saved checkpoint", async () => {
@@ -135,7 +288,13 @@ describe("AgentConversation", () => {
         ]),
     });
 
-    render(<AgentConversation api={api} projectId="project-1" />);
+    render(
+      <AgentConversation
+        api={api}
+        projectId="project-1"
+        renderToolbar={testToolbar}
+      />,
+    );
 
     const input = await screen.findByPlaceholderText(
       "向 DeepSeek 询问，或让它审查并修改当前项目...",
@@ -218,7 +377,13 @@ describe("AgentConversation", () => {
       updateAiAgentRevision: vi.fn().mockResolvedValue(updatedRevision),
     });
 
-    render(<AgentConversation api={api} projectId="project-1" />);
+    render(
+      <AgentConversation
+        api={api}
+        projectId="project-1"
+        renderToolbar={testToolbar}
+      />,
+    );
 
     expect(await screen.findByText(/待审阅修改建议/)).toBeVisible();
     // Each row is identified by its source text (no internal IDs); all selected by default.

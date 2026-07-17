@@ -38,6 +38,8 @@ function createHarness(options: HarnessOptions = {}) {
   const updateTranslation = vi.fn();
   const getTranslationHistory = vi.fn(() => []);
   const updateAiAgentRevision = vi.fn();
+  const renameAiSession = vi.fn();
+  const deleteAiSession = vi.fn();
   const copyText = vi.fn();
   const openPath = vi.fn(async () => "");
   const showOpenDialog = vi.fn(async () => (
@@ -77,6 +79,16 @@ function createHarness(options: HarnessOptions = {}) {
     projectRepository,
     unitRepository,
     aiSettingsService: {} as never,
+    aiAgentService: {
+      listSessions: vi.fn(),
+      createSession: vi.fn(),
+      renameSession: renameAiSession,
+      deleteSession: deleteAiSession,
+      listMessages: vi.fn(),
+      sendMessage: vi.fn(),
+      stopMessage: vi.fn(),
+      retryLastMessage: vi.fn(),
+    } as never,
     aiRevisionService: {
       listRevisions: vi.fn(),
       updateRevision: updateAiAgentRevision,
@@ -104,6 +116,8 @@ function createHarness(options: HarnessOptions = {}) {
     updateTranslation,
     getTranslationHistory,
     updateAiAgentRevision,
+    renameAiSession,
+    deleteAiSession,
     copyText,
     openPath,
     showOpenDialog,
@@ -117,6 +131,25 @@ describe("registerDesktopHandlers", () => {
     const { handlers } = createHarness();
     expect([...handlers.keys()].sort())
       .toEqual(Object.values(IPC_CHANNELS.requests).sort());
+  });
+
+  it("validates and forwards AI session rename and delete operations", async () => {
+    const {
+      event,
+      handlers,
+      renameAiSession,
+      deleteAiSession,
+    } = createHarness();
+
+    await handlers.get(IPC_CHANNELS.requests.renameAiSession)!(
+      event,
+      "session-1",
+      "  新名称  ",
+    );
+    await handlers.get(IPC_CHANNELS.requests.deleteAiSession)!(event, "session-1");
+
+    expect(renameAiSession).toHaveBeenCalledWith("session-1", "  新名称  ");
+    expect(deleteAiSession).toHaveBeenCalledWith("session-1");
   });
 
   it("validates a complete project query before calling the repository", () => {

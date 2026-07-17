@@ -1,14 +1,9 @@
 "use client";
 
 import {
-  Bot,
   KeyRound,
-  ListChecks,
   Loader2,
-  MessageSquare,
-  RefreshCw,
   ShieldCheck,
-  Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -21,11 +16,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { AgentConversation } from "./agent-conversation";
+import { AiCompactToolbar } from "./ai-compact-toolbar";
+import { AiKeySettingsDialog } from "./ai-key-settings-dialog";
 import { AuditPanel } from "./audit-panel";
 import type {
   DeepSeekSettingsStatus,
@@ -41,6 +37,8 @@ type AiSettingsApi = Pick<
   | "queryProject"
   | "listAiSessions"
   | "createAiSession"
+  | "renameAiSession"
+  | "deleteAiSession"
   | "listAiMessages"
   | "sendAiMessage"
   | "stopAiMessage"
@@ -79,9 +77,10 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("conversation");
+  const [activeTab, setActiveTab] = useState<"conversation" | "audit">("conversation");
 
   useEffect(() => {
     let active = true;
@@ -105,14 +104,16 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
     return () => { active = false; };
   }, [api]);
 
-  const saveKey = async () => {
+  const saveKey = async (nextKey = apiKey): Promise<boolean> => {
     setBusy(true);
     setError("");
     try {
-      setSettings(await api.saveDeepSeekKey(apiKey));
+      setSettings(await api.saveDeepSeekKey(nextKey));
       setApiKey("");
+      return true;
     } catch (saveError) {
       setError(errorMessage(saveError));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -135,6 +136,7 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
     setError("");
     try {
       setSettings(await api.deleteDeepSeekKey());
+      setSettingsOpen(false);
       setDeleteConfirming(false);
     } catch (deleteError) {
       setError(errorMessage(deleteError));
@@ -195,51 +197,66 @@ export function AiModePanel({ api, projectId, targetLanguages, onApplied }: AiMo
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background" data-project-id={projectId}>
-      <div className="flex min-h-12 items-center gap-2 border-b border-border bg-card px-3">
-        <Bot size={16} />
-        <span className="text-sm font-semibold text-foreground">DeepSeek Agent</span>
-        <Badge className="ml-auto" variant="secondary">
-          {settings.maskedKey}
-        </Badge>
-        <Button
-          aria-label="验证 AI 连接"
-          disabled={busy}
-          onClick={() => void verify()}
-          size="icon-sm"
-          title="验证连接"
-          variant="ghost"
+      {error && !settingsOpen ? (
+        <div
+          className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          role="alert"
         >
-          <RefreshCw className={busy ? "animate-spin" : ""} />
-        </Button>
-        <Button
-          aria-label="删除 API Key"
-          disabled={busy}
-          onClick={() => setDeleteConfirming(true)}
-          size="icon-sm"
-          title="删除 API Key"
-          variant="ghost"
-        >
-          <Trash2 />
-        </Button>
-      </div>
-      {error ? <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert">{error}</div> : null}
-      <Tabs className="flex min-h-0 flex-1 flex-col" onValueChange={setActiveTab} value={activeTab}>
-        <TabsList className="m-2 grid w-auto grid-cols-2 rounded-md" variant="default">
-          <TabsTrigger value="conversation"><MessageSquare />会话</TabsTrigger>
-          <TabsTrigger value="audit"><ListChecks />审查</TabsTrigger>
-        </TabsList>
-        <TabsContent className="min-h-0 flex-1 p-2 pt-0" value="conversation">
-          <AgentConversation api={api} onApplied={onApplied} projectId={projectId} />
-        </TabsContent>
-        <TabsContent className="min-h-0 flex-1 p-2 pt-0" value="audit">
-          <AuditPanel
+          {error}
+        </div>
+      ) : null}
+      <Tabs
+        className="flex min-h-0 flex-1 flex-col"
+        onValueChange={(value) => setActiveTab(value as "conversation" | "audit")}
+        value={activeTab}
+      >
+        <TabsContent className="min-h-0 flex-1 p-2" value="conversation">
+          <AgentConversation
             api={api}
             onApplied={onApplied}
             projectId={projectId}
-            targetLanguages={targetLanguages}
+            renderToolbar={({ sessionTitle, onCreateSession, onOpenHistory }) => (
+              <AiCompactToolbar
+                activeTab="conversation"
+                onCreateSession={onCreateSession}
+                onOpenHistory={onOpenHistory}
+                onOpenSettings={() => setSettingsOpen(true)}
+                sessionTitle={sessionTitle}
+              />
+            )}
           />
         </TabsContent>
+        <TabsContent className="min-h-0 flex-1 p-2" value="audit">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border bg-card">
+            <AiCompactToolbar
+              activeTab="audit"
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+            <div className="min-h-0 flex-1">
+              <AuditPanel
+                api={api}
+                onApplied={onApplied}
+                projectId={projectId}
+                targetLanguages={targetLanguages}
+              />
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
+      <AiKeySettingsDialog
+        busy={busy}
+        error={error}
+        maskedKey={settings.maskedKey ?? ""}
+        onDelete={() => {
+          setSettingsOpen(false);
+          setDeleteConfirming(true);
+        }}
+        onOpenChange={setSettingsOpen}
+        onReplace={saveKey}
+        onVerify={() => void verify()}
+        open={settingsOpen}
+        verifiedAt={settings.verifiedAt}
+      />
       <AlertDialog onOpenChange={setDeleteConfirming} open={deleteConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>

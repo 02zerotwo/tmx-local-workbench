@@ -2,18 +2,18 @@
 
 import {
   Bot,
-  History,
   Loader2,
-  MessageSquarePlus,
   Send,
   Square,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Checkpoint,
-  CheckpointIcon,
-  CheckpointTrigger,
-} from "@/components/ai-elements/checkpoint";
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Conversation,
   ConversationContent,
@@ -33,6 +33,7 @@ import { MarkdownResponse } from "@/components/ai/markdown-response";
 import { RevisionReviewList } from "@/components/ai/revision-review-list";
 import { SessionHistoryDrawer } from "@/components/ai/session-history-drawer";
 import { Button } from "@/components/ui/button";
+import { createAiSessionTitle } from "@/lib/ai-session-title";
 import type {
   AiAgentEvent,
   AiAgentRevisionRecord,
@@ -46,6 +47,8 @@ type AgentApi = Pick<
   TmxDesktopApi,
   | "listAiSessions"
   | "createAiSession"
+  | "renameAiSession"
+  | "deleteAiSession"
   | "listAiMessages"
   | "sendAiMessage"
   | "stopAiMessage"
@@ -61,6 +64,13 @@ type AgentConversationProps = {
   api: AgentApi;
   projectId: string;
   onApplied?: () => void;
+  renderToolbar: (controls: AgentConversationToolbarControls) => ReactNode;
+};
+
+export type AgentConversationToolbarControls = {
+  sessionTitle: string;
+  onOpenHistory: () => void;
+  onCreateSession: () => void;
 };
 
 type AgentRuntimeEvent = AiAgentEvent["event"];
@@ -125,11 +135,6 @@ function getText(parts: AiMessagePart[]): string {
     .join("\n");
 }
 
-function shortTitle(content: string): string {
-  const normalized = content.replace(/\s+/g, " ").trim();
-  return normalized.length > 18 ? `${normalized.slice(0, 18)}...` : normalized;
-}
-
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "AI 会话操作失败";
 }
@@ -138,6 +143,7 @@ export function AgentConversation({
   api,
   projectId,
   onApplied,
+  renderToolbar,
 }: AgentConversationProps) {
   const [sessions, setSessions] = useState<AiSessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -158,9 +164,6 @@ export function AgentConversation({
   const pendingRevisions = useMemo(
     () => revisions.filter((revision) => revision.status === "pending"),
     [revisions],
-  );
-  const checkpointSaved = messages.some(
-    (message) => message.role === "assistant" && message.status === "complete",
   );
   const lastMessage = messages.at(-1);
   const retryAvailable =
@@ -244,7 +247,7 @@ export function AgentConversation({
   );
 
   const createSession = useCallback(
-    async (title = "新会话") => {
+    async (title: string) => {
       const created = await api.createAiSession(projectId, title);
       setSessions((current) => [
         created,
@@ -259,6 +262,15 @@ export function AgentConversation({
     [api, projectId],
   );
 
+  const beginNewSession = useCallback(() => {
+    activeSessionIdRef.current = null;
+    setActiveSessionId(null);
+    setMessages([]);
+    setRevisions([]);
+    setLiveParts([]);
+    setError("");
+  }, []);
+
   const sendMessage = async (content: string) => {
     const trimmed = content.trim();
     if (!trimmed || sending) return;
@@ -269,7 +281,7 @@ export function AgentConversation({
 
     try {
       const session =
-        activeSession ?? (await createSession(shortTitle(trimmed)));
+        activeSession ?? (await createSession(createAiSessionTitle(trimmed)));
       setMessages((current) => [
         ...current,
         {
@@ -383,36 +395,55 @@ export function AgentConversation({
     }
   };
 
+  const renameSession = async (
+    sessionId: string,
+    title: string,
+  ): Promise<boolean> => {
+    setError("");
+    try {
+      const renamed = await api.renameAiSession(sessionId, title);
+      setSessions((current) =>
+        current.map((item) => (item.id === renamed.id ? renamed : item)),
+      );
+      return true;
+    } catch (renameError) {
+      setError(getErrorMessage(renameError));
+      return false;
+    }
+  };
+
+  const deleteSession = async (sessionId: string): Promise<boolean> => {
+    if (sending && sessionId === activeSessionIdRef.current) {
+      setError("请先停止当前回答，再删除该会话");
+      return false;
+    }
+    setError("");
+    try {
+      await api.deleteAiSession(sessionId);
+      const remaining = sessions.filter((item) => item.id !== sessionId);
+      setSessions(remaining);
+      if (sessionId === activeSessionIdRef.current) {
+        const nextSessionId = remaining[0]?.id ?? null;
+        activeSessionIdRef.current = nextSessionId;
+        setActiveSessionId(nextSessionId);
+        setMessages([]);
+        setRevisions([]);
+        setLiveParts([]);
+      }
+      return true;
+    } catch (deleteError) {
+      setError(getErrorMessage(deleteError));
+      return false;
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border bg-muted/40 px-2">
-        <Button
-          aria-label="历史会话"
-          onClick={() => setHistoryOpen(true)}
-          size="sm"
-          title="历史会话"
-          type="button"
-        >
-          <History />
-          历史
-        </Button>
-        <span
-          className="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
-          title={activeSession?.title}
-        >
-          {activeSession?.title ?? "新会话"}
-        </span>
-        <Button
-          aria-label="新建会话"
-          onClick={() => void createSession()}
-          size="icon-sm"
-          title="新建会话"
-          type="button"
-          variant="ghost"
-        >
-          <MessageSquarePlus />
-        </Button>
-      </div>
+      {renderToolbar({
+        sessionTitle: activeSession?.title ?? "新会话",
+        onOpenHistory: () => setHistoryOpen(true),
+        onCreateSession: beginNewSession,
+      })}
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Conversation className="min-h-0">
@@ -454,12 +485,6 @@ export function AgentConversation({
                 </MessageContent>
               </Message>
             ) : null}
-            {/* {checkpointSaved ? (
-              <Checkpoint>
-                <CheckpointIcon />
-                <CheckpointTrigger disabled>检查点已保存</CheckpointTrigger>
-              </Checkpoint>
-            ) : null} */}
           </ConversationContent>
           <ConversationScrollButton title="滚动到底部" />
         </Conversation>
@@ -522,10 +547,12 @@ export function AgentConversation({
         activeSessionId={activeSessionId}
         loading={loading}
         onCreate={() => {
-          void createSession();
+          beginNewSession();
           setHistoryOpen(false);
         }}
+        onDelete={deleteSession}
         onOpenChange={setHistoryOpen}
+        onRename={renameSession}
         onSelect={(sessionId) => {
           activeSessionIdRef.current = sessionId;
           setActiveSessionId(sessionId);

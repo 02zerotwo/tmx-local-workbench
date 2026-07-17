@@ -70,7 +70,14 @@ export type DesktopHandlerDependencies = {
   >;
   aiAgentService?: Pick<
     TranslationAgentService,
-    "listSessions" | "createSession" | "listMessages" | "sendMessage" | "stopMessage" | "retryLastMessage"
+    | "listSessions"
+    | "createSession"
+    | "renameSession"
+    | "deleteSession"
+    | "listMessages"
+    | "sendMessage"
+    | "stopMessage"
+    | "retryLastMessage"
   >;
   aiAuditService?: Pick<
     AuditWorkflowService,
@@ -425,6 +432,23 @@ export function registerDesktopHandlers(
       requiredString(projectId, "项目 ID"),
       requiredString(title, "会话标题"),
       dependencies.aiSettingsService!.getModel(),
+    );
+  });
+  register(dependencies, requests.renameAiSession, (event, sessionId, title) => {
+    requireTrustedAgentSender(dependencies, event);
+    const value = requiredString(title, "会话标题");
+    if (value.length > 100) {
+      throw new Error("会话标题长度不能超过 100 个字符");
+    }
+    return dependencies.aiAgentService!.renameSession(
+      requiredString(sessionId, "会话 ID"),
+      value,
+    );
+  });
+  register(dependencies, requests.deleteAiSession, (event, sessionId) => {
+    requireTrustedAgentSender(dependencies, event);
+    return dependencies.aiAgentService!.deleteSession(
+      requiredString(sessionId, "会话 ID"),
     );
   });
   register(dependencies, requests.listAiMessages, (event, sessionId, branchId) => {

@@ -30,6 +30,8 @@ export const IPC_CHANNELS = {
     deleteDeepSeekKey: "tmx-workbench:ai:settings:delete-key",
     listAiSessions: "tmx-workbench:ai:sessions:list",
     createAiSession: "tmx-workbench:ai:sessions:create",
+    renameAiSession: "tmx-workbench:ai:sessions:rename",
+    deleteAiSession: "tmx-workbench:ai:sessions:delete",
     listAiMessages: "tmx-workbench:ai:messages:list",
     sendAiMessage: "tmx-workbench:ai:messages:send",
     stopAiMessage: "tmx-workbench:ai:messages:stop",

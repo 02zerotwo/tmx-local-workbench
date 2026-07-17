@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+.ai-compact-toolbar {
+  container-name: ai-toolbar;
+  container-type: inline-size;
+}
+
+.ai-toolbar-more-settings,
+.ai-toolbar-more-compact {
+  display: none;
+}
+
+@container ai-toolbar (max-width: 34rem) {
+  .ai-toolbar-settings {
+    display: none;
+  }
+
+  .ai-toolbar-more-settings {
+    display: inline-flex;
+  }
+}
+
+@container ai-toolbar (max-width: 26rem) {
+  .ai-toolbar-session-title,
+  .ai-toolbar-history,
+  .ai-toolbar-more-settings {
+    display: none;
+  }
+
+  .ai-toolbar-more-compact {
+    display: inline-flex;
+  }
+}
+
 :root {
   color-scheme: light;
 

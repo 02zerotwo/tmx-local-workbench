@@ -54,6 +54,16 @@ export class TranslationAgentService {
     return this.options.repository.listSessions(projectId);
   }
 
+  renameSession(sessionId: string, title: string): AiSession {
+    return this.options.repository.renameSession(sessionId, title);
+  }
+
+  deleteSession(sessionId: string): true {
+    this.activeControllers.get(sessionId)?.abort();
+    this.activeControllers.delete(sessionId);
+    return this.options.repository.deleteSession(sessionId);
+  }
+
   listMessages(sessionId: string, branchId: string): AiMessage[] {
     return this.options.repository.listMessages(sessionId, branchId);
   }

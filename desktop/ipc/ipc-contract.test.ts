@@ -30,6 +30,8 @@ const METHOD_NAMES = [
   "deleteDeepSeekKey",
   "listAiSessions",
   "createAiSession",
+  "renameAiSession",
+  "deleteAiSession",
   "listAiMessages",
   "sendAiMessage",
   "stopAiMessage",
@@ -102,6 +104,8 @@ describe("desktop IPC contract", () => {
     await api.deleteDeepSeekKey();
     await api.listAiSessions("project-1");
     await api.createAiSession("project-1", "新会话");
+    await api.renameAiSession("session-1", "新名称");
+    await api.deleteAiSession("session-1");
     await api.listAiMessages("session-1");
     await api.sendAiMessage("session-1", "main", "检查术语");
     await api.stopAiMessage("session-1");
@@ -156,6 +160,8 @@ describe("desktop IPC contract", () => {
       [IPC_CHANNELS.requests.deleteDeepSeekKey],
       [IPC_CHANNELS.requests.listAiSessions, "project-1"],
       [IPC_CHANNELS.requests.createAiSession, "project-1", "新会话"],
+      [IPC_CHANNELS.requests.renameAiSession, "session-1", "新名称"],
+      [IPC_CHANNELS.requests.deleteAiSession, "session-1"],
       [IPC_CHANNELS.requests.listAiMessages, "session-1", "main"],
       [IPC_CHANNELS.requests.sendAiMessage, "session-1", "main", "检查术语"],
       [IPC_CHANNELS.requests.stopAiMessage, "session-1"],

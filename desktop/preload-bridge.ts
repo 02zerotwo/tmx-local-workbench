@@ -106,6 +106,15 @@ export function createDesktopApi(ipcRenderer: IpcRendererBridge): TmxDesktopApi 
       projectId,
       title,
     ) as ReturnType<TmxDesktopApi["createAiSession"]>,
+    renameAiSession: (sessionId, title) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.renameAiSession,
+      sessionId,
+      title,
+    ) as ReturnType<TmxDesktopApi["renameAiSession"]>,
+    deleteAiSession: (sessionId) => ipcRenderer.invoke(
+      IPC_CHANNELS.requests.deleteAiSession,
+      sessionId,
+    ) as ReturnType<TmxDesktopApi["deleteAiSession"]>,
     listAiMessages: (sessionId, branchId = "main") => ipcRenderer.invoke(
       IPC_CHANNELS.requests.listAiMessages,
       sessionId,

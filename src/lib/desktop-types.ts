@@ -289,6 +289,8 @@ export type TmxDesktopApi = {
   deleteDeepSeekKey: () => Promise<DeepSeekSettingsStatus>;
   listAiSessions: (projectId: string) => Promise<AiSessionRecord[]>;
   createAiSession: (projectId: string, title: string) => Promise<AiSessionRecord>;
+  renameAiSession: (sessionId: string, title: string) => Promise<AiSessionRecord>;
+  deleteAiSession: (sessionId: string) => Promise<boolean>;
   listAiMessages: (sessionId: string, branchId?: string) => Promise<AiMessageRecord[]>;
   sendAiMessage: (
     sessionId: string,
