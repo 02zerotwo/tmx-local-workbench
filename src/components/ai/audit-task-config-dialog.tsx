@@ -133,7 +133,7 @@ export function AuditTaskConfigDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="h-[80vh] gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="border-b border-border px-4 py-3">
           <DialogTitle className="text-sm">新建审查任务</DialogTitle>
           <DialogDescription className="text-xs">
